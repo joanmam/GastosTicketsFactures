@@ -27,19 +27,27 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorized();
 
-  const body = (await req.json()) as TicketInput;
+  try {
+    const body = (await req.json()) as TicketInput;
 
-  let imagePath: string | null = null;
-  if (body.imageBase64 && body.imageMediaType) {
-    imagePath = await saveTicketImage(user.uid, body.imageBase64, body.imageMediaType);
+    let imagePath: string | null = null;
+    if (body.imageBase64 && body.imageMediaType) {
+      imagePath = await saveTicketImage(user.uid, body.imageBase64, body.imageMediaType);
+    }
+
+    const ticket = await createTicket(
+      user.uid,
+      user.name || user.email || null,
+      imagePath,
+      body
+    );
+
+    return NextResponse.json({ ticket }, { status: 201 });
+  } catch (err: any) {
+    console.error("Error creating ticket:", err);
+    return NextResponse.json(
+      { error: err?.message || "Error creant el ticket." },
+      { status: 500 }
+    );
   }
-
-  const ticket = await createTicket(
-    user.uid,
-    user.name || user.email || null,
-    imagePath,
-    body
-  );
-
-  return NextResponse.json({ ticket }, { status: 201 });
 }

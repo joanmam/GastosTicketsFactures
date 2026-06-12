@@ -22,7 +22,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const data = await extractTicketData(imageBase64, mediaType);
+    // Si el client envia una data URL completa (data:image/jpeg;base64,xxxx),
+    // l'API d'Anthropic necessita només la part en base64.
+    const cleanBase64 = imageBase64.replace(/^data:[^;]+;base64,/, "");
+
+    const data = await extractTicketData(cleanBase64, mediaType);
 
     return NextResponse.json({ data });
   } catch (err: any) {

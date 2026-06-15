@@ -1,6 +1,7 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { deleteInvoiceFile, getSignedInvoiceFileUrl, saveInvoiceFile } from "@/lib/invoice-storage";
 import { defaultAeatInfo as defaultAeat, defaultInvoiceChecklist as defaultChecklist, quarterOf } from "@/lib/invoice-calc";
+import { upsertFromInvoiceItem } from "@/lib/line-item-catalog-db";
 import type { AeatInfo, Invoice, InvoiceChecklist, InvoiceInput } from "@/types";
 
 const COLLECTION = "invoices";
@@ -167,6 +168,7 @@ export async function createInvoice(userId: string, input: InvoiceInput): Promis
   };
 
   await ref.set(data);
+  await saveLineItemsToCatalog(userId, data.items);
   return (await getInvoiceById(ref.id))!;
 }
 
@@ -219,7 +221,27 @@ export async function updateInvoice(id: string, input: InvoiceInput): Promise<In
   }
 
   await ref.update(updates);
+
+  if (input.items !== undefined) {
+    await saveLineItemsToCatalog((existing.userId as string) || "", input.items);
+  }
+
   return getInvoiceById(id);
+}
+
+/**
+ * Desa les línies de la factura al catàleg de conceptes reutilitzables.
+ * No bloqueja ni fa fallar el desat de la factura si hi ha algun error.
+ */
+async function saveLineItemsToCatalog(userId: string, items: InvoiceInput["items"]): Promise<void> {
+  if (!userId || !items || items.length === 0) return;
+  try {
+    for (const item of items) {
+      await upsertFromInvoiceItem(userId, item);
+    }
+  } catch (err) {
+    console.error("Error desant el catàleg de conceptes:", err);
+  }
 }
 
 export async function deleteInvoice(id: string): Promise<boolean> {

@@ -125,3 +125,22 @@ export interface InvoiceTotals {
   irpfAmount: number;
   total: number;
 }
+
+// ---------------------------------------------------------------------------
+// Catàleg de conceptes (línies de factura reutilitzables)
+// ---------------------------------------------------------------------------
+
+export interface LineItemCatalogInput {
+  description?: string | null;
+  unitPrice?: number | null;
+  vatRate?: number | null;
+}
+
+export interface LineItemCatalogEntry extends LineItemCatalogInput {
+  id: string;
+  userId: string;
+  usageCount: number;
+  lastUsedDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}

@@ -5,7 +5,8 @@ import { INVOICE_STATUSES, VAT_RATES, IRPF_RATES } from "@/lib/invoice-constants
 import { computeInvoiceTotals, emptyInvoiceItem, lineTotal } from "@/lib/invoice-calc";
 import InvoiceAeatPanel from "@/components/InvoiceAeatPanel";
 import InvoiceChecklist from "@/components/InvoiceChecklist";
-import type { Client, InvoiceInput, InvoiceLineItem, InvoiceStatus } from "@/types";
+import { apiJson } from "@/lib/api-client";
+import type { Client, InvoiceInput, InvoiceLineItem, InvoiceStatus, LineItemCatalogEntry } from "@/types";
 
 interface InvoiceFormProps {
   initialData: InvoiceInput;
@@ -31,10 +32,17 @@ export default function InvoiceForm({
   const [form, setForm] = useState<InvoiceInput>(initialData);
   const [pdfFile, setPdfFile] = useState<{ base64: string; mediaType: string } | null>(null);
   const [qrFile, setQrFile] = useState<{ base64: string; mediaType: string } | null>(null);
+  const [catalog, setCatalog] = useState<LineItemCatalogEntry[]>([]);
 
   useEffect(() => {
     setForm(initialData);
   }, [initialData]);
+
+  useEffect(() => {
+    apiJson<{ items: LineItemCatalogEntry[] }>("/api/line-items")
+      .then((d) => setCatalog(d.items))
+      .catch(() => {});
+  }, []);
 
   function update<K extends keyof InvoiceInput>(key: K, value: InvoiceInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -54,6 +62,19 @@ export default function InvoiceForm({
 
   function removeItem(index: number) {
     setForm((f) => ({ ...f, items: (f.items || []).filter((_, i) => i !== index) }));
+  }
+
+  function handleDescriptionChange(index: number, description: string) {
+    const match = catalog.find((c) => (c.description || "").toLowerCase() === description.toLowerCase());
+    if (match) {
+      updateItem(index, {
+        description,
+        unitPrice: match.unitPrice ?? 0,
+        vatRate: match.vatRate ?? 21,
+      });
+    } else {
+      updateItem(index, { description });
+    }
   }
 
   function handleClientChange(clientId: string) {
@@ -177,7 +198,8 @@ export default function InvoiceForm({
                 <input
                   type="text"
                   value={item.description}
-                  onChange={(e) => updateItem(i, { description: e.target.value })}
+                  onChange={(e) => handleDescriptionChange(i, e.target.value)}
+                  list="line-item-catalog"
                   required
                 />
               </div>
@@ -226,6 +248,11 @@ export default function InvoiceForm({
             </div>
           ))}
         </div>
+        <datalist id="line-item-catalog">
+          {catalog.map((c) => (
+            <option key={c.id} value={c.description || ""} />
+          ))}
+        </datalist>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

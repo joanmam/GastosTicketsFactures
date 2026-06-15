@@ -49,6 +49,9 @@ export default function Navbar() {
           <Link href="/facturacio" className={linkClass("/facturacio")}>
             📊 Facturació
           </Link>
+          <Link href="/conceptes" className={sectionLinkClass("/conceptes")}>
+            📚 Conceptes
+          </Link>
         </div>
         <div className="flex items-center gap-3 text-sm text-gray-600">
           {(user?.displayName || user?.email) && <span>{user.displayName || user.email}</span>}

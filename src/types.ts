@@ -67,6 +67,12 @@ export interface InvoiceLineItem {
 export type InvoiceStatus = "DRAFT" | "PENDING_AEAT" | "SENT" | "PAID" | "OVERDUE";
 
 /**
+ * Tipus de factura: ORDINARY = ordinària, RECTIFYING = rectificativa
+ * (factura que rectifica una factura anterior, segons normativa AEAT).
+ */
+export type InvoiceType = "ORDINARY" | "RECTIFYING";
+
+/**
  * Estat del document oficial de la AEAT (Sede Electrònica).
  * PENDING = Pendent de generar, OBTAINED = Document AEAT obtingut,
  * SENT_TO_CLIENT = Enviat al client.
@@ -102,6 +108,9 @@ export interface InvoiceInput {
   irpfRate?: number | null; // % retenció IRPF (p.ex. 15)
   notes?: string | null;
   status?: InvoiceStatus;
+  invoiceType?: InvoiceType | null; // ORDINARY (per defecte) o RECTIFYING
+  rectifiesInvoiceId?: string | null; // id de la factura original que es rectifica
+  rectificationReason?: string | null; // motiu de la rectificació
   aeat?: AeatInfo;
   checklist?: InvoiceChecklist;
   // Camps temporals només per pujar fitxers nous des del client
@@ -141,6 +150,37 @@ export interface LineItemCatalogEntry extends LineItemCatalogInput {
   userId: string;
   usageCount: number;
   lastUsedDate?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Pressupostos
+// ---------------------------------------------------------------------------
+
+/**
+ * Estat d'un pressupost.
+ * DRAFT = Esborrany, SENT = Enviat al client, ACCEPTED = Acceptat,
+ * REJECTED = Rebutjat, CONVERTED = Convertit en factura.
+ */
+export type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "CONVERTED";
+
+export interface QuoteInput {
+  number?: string | null; // PRES-YYYY-NNN
+  clientId?: string | null;
+  clientSnapshot?: ClientInput | null;
+  date?: string | null; // data del pressupost (ISO)
+  validUntil?: string | null; // data de validesa (ISO)
+  items?: InvoiceLineItem[];
+  irpfRate?: number | null; // % retenció IRPF (p.ex. 15)
+  notes?: string | null;
+  status?: QuoteStatus;
+  convertedInvoiceId?: string | null; // id de la factura generada en acceptar-se
+}
+
+export interface Quote extends QuoteInput {
+  id: string;
+  userId: string;
   createdAt?: string | null;
   updatedAt?: string | null;
 }

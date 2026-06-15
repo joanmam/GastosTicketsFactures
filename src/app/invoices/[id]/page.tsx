@@ -98,6 +98,7 @@ function InvoiceDetailContent() {
               onDelete={handleDelete}
               saving={saving}
               submitLabel="Desar canvis"
+              currentId={invoice.id}
             />
           </div>
         )}

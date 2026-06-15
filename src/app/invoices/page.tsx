@@ -195,6 +195,11 @@ function InvoicesPageContent() {
                         <Link href={`/invoices/${inv.id}`} className="flex">
                           <span className="px-4 py-2 block w-full whitespace-nowrap font-medium text-gray-900">
                             {inv.number || "—"}
+                            {inv.invoiceType === "RECTIFYING" && (
+                              <span className="ml-2 inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-yellow-100 text-yellow-700 align-middle">
+                                Rectificativa
+                              </span>
+                            )}
                           </span>
                         </Link>
                       </td>

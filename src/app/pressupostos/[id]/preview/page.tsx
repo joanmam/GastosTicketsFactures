@@ -7,8 +7,8 @@ import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiJson } from "@/lib/api-client";
 import { computeInvoiceTotals, lineBase, lineTotal, lineVat } from "@/lib/invoice-calc";
-import { AEAT_STATUS_LABEL, INVOICE_STATUS_LABEL, INVOICE_TYPE_LABEL } from "@/lib/invoice-constants";
-import type { AeatStatus, Invoice, InvoiceStatus, InvoiceType } from "@/types";
+import { QUOTE_STATUS_LABEL } from "@/lib/invoice-constants";
+import type { Quote, QuoteStatus } from "@/types";
 
 function formatAmount(n: number) {
   return new Intl.NumberFormat("ca-ES", { style: "currency", currency: "EUR" }).format(n);
@@ -16,8 +16,7 @@ function formatAmount(n: number) {
 
 function PreviewContent() {
   const params = useParams<{ id: string }>();
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [rectifiedInvoice, setRectifiedInvoice] = useState<Invoice | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,18 +24,10 @@ function PreviewContent() {
     let active = true;
     (async () => {
       try {
-        const data = await apiJson<{ invoice: Invoice }>(`/api/invoices/${params.id}`);
-        if (active) setInvoice(data.invoice);
-        if (data.invoice.invoiceType === "RECTIFYING" && data.invoice.rectifiesInvoiceId) {
-          try {
-            const orig = await apiJson<{ invoice: Invoice }>(`/api/invoices/${data.invoice.rectifiesInvoiceId}`);
-            if (active) setRectifiedInvoice(orig.invoice);
-          } catch {
-            // ignore - la factura original pot haver estat eliminada
-          }
-        }
+        const data = await apiJson<{ quote: Quote }>(`/api/quotes/${params.id}`);
+        if (active) setQuote(data.quote);
       } catch (err: any) {
-        if (active) setError(err?.message || "Error carregant la factura.");
+        if (active) setError(err?.message || "Error carregant el pressupost.");
       } finally {
         if (active) setLoading(false);
       }
@@ -46,7 +37,7 @@ function PreviewContent() {
     };
   }, [params.id]);
 
-  if (loading || !invoice) {
+  if (loading || !quote) {
     return (
       <>
         <Navbar />
@@ -57,9 +48,8 @@ function PreviewContent() {
     );
   }
 
-  const totals = computeInvoiceTotals(invoice.items || [], invoice.irpfRate);
-  const snapshot = invoice.clientSnapshot;
-  const aeatStatus = (invoice.aeat?.status || "PENDING") as AeatStatus;
+  const totals = computeInvoiceTotals(quote.items || [], quote.irpfRate);
+  const snapshot = quote.clientSnapshot;
 
   return (
     <>
@@ -75,7 +65,7 @@ function PreviewContent() {
       </div>
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
         <div className="no-print flex items-center justify-between flex-wrap gap-2">
-          <Link href={`/invoices/${invoice.id}`} className="btn-secondary">
+          <Link href={`/pressupostos/${quote.id}`} className="btn-secondary">
             ← Tornar
           </Link>
           <button className="btn-primary" onClick={() => window.print()}>
@@ -83,34 +73,17 @@ function PreviewContent() {
           </button>
         </div>
 
-        <div className="rounded-md border-2 border-red-300 bg-red-50 text-red-800 text-center font-semibold px-4 py-3">
-          DOCUMENT INTERN — NO VÀLID COM A FACTURA OFICIAL
-          <p className="font-normal text-sm mt-1">
-            La factura oficial és la generada a la Seu Electrònica de l&apos;AEAT, amb codi segur de
-            verificació (CSV) i codi QR.
-          </p>
-        </div>
-
         <div className="card print-card space-y-6">
           <div className="flex justify-between items-start flex-wrap gap-4">
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Factura {invoice.number}
-                {invoice.invoiceType === "RECTIFYING" && (
-                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700 align-middle">
-                    {INVOICE_TYPE_LABEL["RECTIFYING" as InvoiceType]}
-                  </span>
-                )}
-              </h1>
-              <p className="text-sm text-gray-600">Data: {invoice.date || "—"}</p>
-              {invoice.dueDate && <p className="text-sm text-gray-600">Venciment: {invoice.dueDate}</p>}
+              <h1 className="text-xl font-semibold text-gray-900">Pressupost {quote.number}</h1>
+              <p className="text-sm text-gray-600">Data: {quote.date || "—"}</p>
+              {quote.validUntil && <p className="text-sm text-gray-600">Vàlid fins a: {quote.validUntil}</p>}
             </div>
             <div className="text-right text-sm">
               <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">
-                {INVOICE_STATUS_LABEL[(invoice.status || "DRAFT") as InvoiceStatus]}
+                {QUOTE_STATUS_LABEL[(quote.status || "DRAFT") as QuoteStatus]}
               </span>
-              <p className="mt-1 text-gray-600">{AEAT_STATUS_LABEL[aeatStatus]}</p>
-              {invoice.aeat?.csv && <p className="text-gray-600">CSV: {invoice.aeat.csv}</p>}
             </div>
           </div>
 
@@ -142,7 +115,7 @@ function PreviewContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {(invoice.items || []).map((item, i) => (
+                {(quote.items || []).map((item, i) => (
                   <tr key={i}>
                     <td className="px-3 py-2">{item.description}</td>
                     <td className="px-3 py-2 text-right">{item.quantity}</td>
@@ -174,51 +147,29 @@ function PreviewContent() {
                 <span className="font-medium">{formatAmount(totals.vatTotal)}</span>
               </div>
               <div className="flex justify-between text-red-600">
-                <span>Retenció IRPF ({invoice.irpfRate ?? 0}%)</span>
+                <span>Retenció IRPF ({quote.irpfRate ?? 0}%)</span>
                 <span>−{formatAmount(totals.irpfAmount)}</span>
               </div>
               <div className="flex justify-between text-base font-semibold pt-1 border-t border-gray-200">
-                <span>Total factura</span>
+                <span>Total pressupost</span>
                 <span>{formatAmount(totals.total)}</span>
               </div>
             </div>
           </div>
 
-          {invoice.invoiceType === "RECTIFYING" && (
-            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 space-y-1">
-              <h2 className="text-sm font-medium text-yellow-800 uppercase mb-1">Factura rectificativa</h2>
-              {rectifiedInvoice && (
-                <p className="text-sm text-gray-700">
-                  Rectifica la factura <span className="font-medium">{rectifiedInvoice.number}</span>
-                  {rectifiedInvoice.date ? ` (${rectifiedInvoice.date})` : ""}
-                </p>
-              )}
-              {invoice.rectificationReason && (
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                  Motiu: {invoice.rectificationReason}
-                </p>
-              )}
-            </div>
-          )}
-
-          {invoice.notes && (
+          {quote.notes && (
             <div>
               <h2 className="text-sm font-medium text-gray-500 uppercase mb-1">Notes</h2>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{quote.notes}</p>
             </div>
           )}
-        </div>
-
-        <div className="text-center text-xs text-gray-400 no-print">
-          Aquest document és només per a control intern. Envia sempre al client el PDF oficial generat
-          per la Seu Electrònica de l&apos;AEAT.
         </div>
       </main>
     </>
   );
 }
 
-export default function InvoicePreviewPage() {
+export default function QuotePreviewPage() {
   return (
     <AuthGuard>
       <PreviewContent />

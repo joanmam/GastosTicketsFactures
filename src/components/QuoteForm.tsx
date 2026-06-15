@@ -1,41 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { INVOICE_STATUSES, INVOICE_TYPES, VAT_RATES, IRPF_RATES } from "@/lib/invoice-constants";
+import { QUOTE_STATUSES, VAT_RATES, IRPF_RATES } from "@/lib/invoice-constants";
 import { computeInvoiceTotals, emptyInvoiceItem, lineTotal } from "@/lib/invoice-calc";
-import InvoiceAeatPanel from "@/components/InvoiceAeatPanel";
-import InvoiceChecklist from "@/components/InvoiceChecklist";
 import { apiJson } from "@/lib/api-client";
-import type { Client, Invoice, InvoiceInput, InvoiceLineItem, InvoiceStatus, InvoiceType, LineItemCatalogEntry } from "@/types";
+import type { Client, InvoiceLineItem, LineItemCatalogEntry, QuoteInput, QuoteStatus } from "@/types";
 
-interface InvoiceFormProps {
-  initialData: InvoiceInput;
+interface QuoteFormProps {
+  initialData: QuoteInput;
   clients: Client[];
-  onSubmit: (data: InvoiceInput) => Promise<void> | void;
+  onSubmit: (data: QuoteInput) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
   submitLabel?: string;
   saving?: boolean;
-  currentId?: string;
+  readOnly?: boolean;
 }
 
 function formatAmount(n: number) {
   return new Intl.NumberFormat("ca-ES", { style: "currency", currency: "EUR" }).format(n);
 }
 
-export default function InvoiceForm({
+export default function QuoteForm({
   initialData,
   clients,
   onSubmit,
   onDelete,
   submitLabel = "Desar",
   saving = false,
-  currentId,
-}: InvoiceFormProps) {
-  const [form, setForm] = useState<InvoiceInput>(initialData);
-  const [pdfFile, setPdfFile] = useState<{ base64: string; mediaType: string } | null>(null);
-  const [qrFile, setQrFile] = useState<{ base64: string; mediaType: string } | null>(null);
+  readOnly = false,
+}: QuoteFormProps) {
+  const [form, setForm] = useState<QuoteInput>(initialData);
   const [catalog, setCatalog] = useState<LineItemCatalogEntry[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
     setForm(initialData);
@@ -47,13 +42,7 @@ export default function InvoiceForm({
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    apiJson<{ invoices: Invoice[] }>("/api/invoices")
-      .then((d) => setInvoices(d.invoices))
-      .catch(() => {});
-  }, []);
-
-  function update<K extends keyof InvoiceInput>(key: K, value: InvoiceInput[K]) {
+  function update<K extends keyof QuoteInput>(key: K, value: QuoteInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -105,16 +94,7 @@ export default function InvoiceForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload: InvoiceInput = { ...form };
-    if (pdfFile) {
-      payload.aeatPdfBase64 = pdfFile.base64;
-      payload.aeatPdfMediaType = pdfFile.mediaType;
-    }
-    if (qrFile) {
-      payload.aeatQrBase64 = qrFile.base64;
-      payload.aeatQrMediaType = qrFile.mediaType;
-    }
-    await onSubmit(payload);
+    await onSubmit({ ...form });
   }
 
   const totals = computeInvoiceTotals(form.items || [], form.irpfRate);
@@ -122,9 +102,10 @@ export default function InvoiceForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+      <fieldset disabled={readOnly} className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div>
-          <label htmlFor="number">Número de factura</label>
+          <label htmlFor="number">Número de pressupost</label>
           <input
             id="number"
             type="text"
@@ -134,76 +115,29 @@ export default function InvoiceForm({
           />
         </div>
         <div>
-          <label htmlFor="date">Data de factura</label>
+          <label htmlFor="date">Data</label>
           <input id="date" type="date" value={form.date || ""} onChange={(e) => update("date", e.target.value)} />
         </div>
         <div>
-          <label htmlFor="dueDate">Data de venciment</label>
+          <label htmlFor="validUntil">Vàlid fins a</label>
           <input
-            id="dueDate"
+            id="validUntil"
             type="date"
-            value={form.dueDate || ""}
-            onChange={(e) => update("dueDate", e.target.value)}
+            value={form.validUntil || ""}
+            onChange={(e) => update("validUntil", e.target.value)}
           />
         </div>
         <div>
           <label htmlFor="status">Estat</label>
-          <select id="status" value={form.status || "DRAFT"} onChange={(e) => update("status", e.target.value as InvoiceStatus)}>
-            {INVOICE_STATUSES.map((s) => (
+          <select id="status" value={form.status || "DRAFT"} onChange={(e) => update("status", e.target.value as QuoteStatus)}>
+            {QUOTE_STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="invoiceType">Tipus de factura</label>
-          <select
-            id="invoiceType"
-            value={form.invoiceType || "ORDINARY"}
-            onChange={(e) => update("invoiceType", e.target.value as InvoiceType)}
-          >
-            {INVOICE_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
-
-      {form.invoiceType === "RECTIFYING" && (
-        <div className="card space-y-3 border-yellow-200 bg-yellow-50">
-          <h3 className="font-semibold text-gray-900">Dades de la rectificació</h3>
-          <div>
-            <label htmlFor="rectifiesInvoiceId">Factura que rectifica</label>
-            <select
-              id="rectifiesInvoiceId"
-              value={form.rectifiesInvoiceId || ""}
-              onChange={(e) => update("rectifiesInvoiceId", e.target.value || null)}
-            >
-              <option value="">Selecciona la factura original...</option>
-              {invoices
-                .filter((i) => i.id !== currentId)
-                .map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.number} {i.clientSnapshot?.name ? `— ${i.clientSnapshot.name}` : ""} ({i.date})
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="rectificationReason">Motiu de la rectificació</label>
-            <textarea
-              id="rectificationReason"
-              rows={2}
-              value={form.rectificationReason || ""}
-              onChange={(e) => update("rectificationReason", e.target.value)}
-              placeholder="Ex: error en l'import, canvi de dades del client, devolució parcial..."
-            />
-          </div>
-        </div>
-      )}
 
       <div className="card space-y-3">
         <div>
@@ -238,7 +172,7 @@ export default function InvoiceForm({
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="mb-0">Línies de factura</label>
+          <label className="mb-0">Línies del pressupost</label>
           <button type="button" className="btn-secondary text-xs" onClick={addItem}>
             + Afegir línia
           </button>
@@ -255,7 +189,7 @@ export default function InvoiceForm({
                   type="text"
                   value={item.description}
                   onChange={(e) => handleDescriptionChange(i, e.target.value)}
-                  list="line-item-catalog"
+                  list="quote-line-item-catalog"
                   required
                 />
               </div>
@@ -304,7 +238,7 @@ export default function InvoiceForm({
             </div>
           ))}
         </div>
-        <datalist id="line-item-catalog">
+        <datalist id="quote-line-item-catalog">
           {catalog.map((c) => (
             <option key={c.id} value={c.description || ""} />
           ))}
@@ -352,47 +286,26 @@ export default function InvoiceForm({
           <span>−{formatAmount(totals.irpfAmount)}</span>
         </div>
         <div className="flex justify-between text-base font-semibold pt-1 border-t border-gray-200">
-          <span>Total factura</span>
+          <span>Total pressupost</span>
           <span>{formatAmount(totals.total)}</span>
         </div>
       </div>
+      </fieldset>
 
-      <div className="card">
-        <InvoiceAeatPanel
-          aeat={form.aeat || { status: "PENDING" }}
-          onChange={(aeat) => update("aeat", aeat)}
-          onPdfSelected={(base64, mediaType) => setPdfFile({ base64, mediaType })}
-          onQrSelected={(base64, mediaType) => setQrFile({ base64, mediaType })}
-        />
-      </div>
-
-      <div className="card">
-        <InvoiceChecklist
-          checklist={
-            form.checklist || {
-              createdInApp: true,
-              dataEnteredAeat: false,
-              aeatPdfSaved: false,
-              sentToClient: false,
-              paid: false,
-            }
-          }
-          onChange={(checklist) => update("checklist", checklist)}
-        />
-      </div>
-
-      <div className="flex items-center justify-between gap-2 pt-2">
-        <div>
-          {onDelete && (
-            <button type="button" className="btn-danger" onClick={() => onDelete()} disabled={saving}>
-              Eliminar
-            </button>
-          )}
+      {!readOnly && (
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <div>
+            {onDelete && (
+              <button type="button" className="btn-danger" onClick={() => onDelete()} disabled={saving}>
+                Eliminar
+              </button>
+            )}
+          </div>
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? "Desant..." : submitLabel}
+          </button>
         </div>
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Desant..." : submitLabel}
-        </button>
-      </div>
+      )}
     </form>
   );
 }

@@ -4,36 +4,30 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
-import InvoiceForm from "@/components/InvoiceForm";
+import QuoteForm from "@/components/QuoteForm";
 import { apiJson } from "@/lib/api-client";
-import { defaultAeatInfo, defaultInvoiceChecklist } from "@/lib/invoice-calc";
 import { DEFAULT_IRPF_RATE } from "@/lib/invoice-constants";
-import type { Client, Invoice, InvoiceInput } from "@/types";
+import type { Client, Quote, QuoteInput } from "@/types";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function emptyInvoice(): InvoiceInput {
+function emptyQuote(): QuoteInput {
   return {
     number: "",
     clientId: null,
     clientSnapshot: null,
     date: todayIso(),
-    dueDate: "",
+    validUntil: "",
     items: [],
     irpfRate: DEFAULT_IRPF_RATE,
     notes: "",
     status: "DRAFT",
-    invoiceType: "ORDINARY",
-    rectifiesInvoiceId: null,
-    rectificationReason: "",
-    aeat: defaultAeatInfo(),
-    checklist: defaultInvoiceChecklist(),
   };
 }
 
-function NewInvoiceContent() {
+function NewQuoteContent() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,17 +51,17 @@ function NewInvoiceContent() {
     };
   }, []);
 
-  async function handleSubmit(data: InvoiceInput) {
+  async function handleSubmit(data: QuoteInput) {
     setSaving(true);
     setError(null);
     try {
-      const res = await apiJson<{ invoice: Invoice }>("/api/invoices", {
+      const res = await apiJson<{ quote: Quote }>("/api/quotes", {
         method: "POST",
         body: JSON.stringify(data),
       });
-      router.push(`/invoices/${res.invoice.id}`);
+      router.push(`/pressupostos/${res.quote.id}`);
     } catch (err: any) {
-      setError(err?.message || "Error creant la factura.");
+      setError(err?.message || "Error creant el pressupost.");
     } finally {
       setSaving(false);
     }
@@ -77,7 +71,7 @@ function NewInvoiceContent() {
     <>
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-        <h1 className="text-xl font-semibold text-gray-900">Nova factura</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Nou pressupost</h1>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -85,12 +79,12 @@ function NewInvoiceContent() {
           <p className="text-sm text-gray-500">Carregant...</p>
         ) : (
           <div className="card">
-            <InvoiceForm
-              initialData={emptyInvoice()}
+            <QuoteForm
+              initialData={emptyQuote()}
               clients={clients}
               onSubmit={handleSubmit}
               saving={saving}
-              submitLabel="Crear factura"
+              submitLabel="Crear pressupost"
             />
           </div>
         )}
@@ -99,10 +93,10 @@ function NewInvoiceContent() {
   );
 }
 
-export default function NewInvoicePage() {
+export default function NewQuotePage() {
   return (
     <AuthGuard>
-      <NewInvoiceContent />
+      <NewQuoteContent />
     </AuthGuard>
   );
 }

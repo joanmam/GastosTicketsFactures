@@ -1,4 +1,4 @@
-import type { AeatStatus, InvoiceStatus } from "@/types";
+import type { AeatStatus, InvoiceStatus, InvoiceType, QuoteStatus } from "@/types";
 
 export const VAT_RATES = [0, 4, 10, 21] as const;
 
@@ -28,6 +28,40 @@ export const INVOICE_STATUS_COLOR: Record<InvoiceStatus, string> = {
   SENT: "bg-blue-100 text-blue-700",
   PAID: "bg-green-100 text-green-700",
   OVERDUE: "bg-red-100 text-red-700",
+};
+
+export const INVOICE_TYPES: { value: InvoiceType; label: string }[] = [
+  { value: "ORDINARY", label: "Ordinària" },
+  { value: "RECTIFYING", label: "Rectificativa" },
+];
+
+export const INVOICE_TYPE_LABEL: Record<InvoiceType, string> = {
+  ORDINARY: "Ordinària",
+  RECTIFYING: "Rectificativa",
+};
+
+export const QUOTE_STATUSES: { value: QuoteStatus; label: string }[] = [
+  { value: "DRAFT", label: "Esborrany" },
+  { value: "SENT", label: "Enviat al client" },
+  { value: "ACCEPTED", label: "Acceptat" },
+  { value: "REJECTED", label: "Rebutjat" },
+  { value: "CONVERTED", label: "Convertit en factura" },
+];
+
+export const QUOTE_STATUS_LABEL: Record<QuoteStatus, string> = {
+  DRAFT: "Esborrany",
+  SENT: "Enviat al client",
+  ACCEPTED: "Acceptat",
+  REJECTED: "Rebutjat",
+  CONVERTED: "Convertit en factura",
+};
+
+export const QUOTE_STATUS_COLOR: Record<QuoteStatus, string> = {
+  DRAFT: "bg-gray-100 text-gray-700",
+  SENT: "bg-blue-100 text-blue-700",
+  ACCEPTED: "bg-green-100 text-green-700",
+  REJECTED: "bg-red-100 text-red-700",
+  CONVERTED: "bg-purple-100 text-purple-700",
 };
 
 export const AEAT_STATUSES: { value: AeatStatus; label: string; icon: string }[] = [

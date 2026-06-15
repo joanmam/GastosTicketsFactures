@@ -20,6 +20,9 @@ function docToInvoice(doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFir
     irpfRate: data.irpfRate ?? null,
     notes: data.notes ?? null,
     status: data.status ?? "DRAFT",
+    invoiceType: data.invoiceType ?? "ORDINARY",
+    rectifiesInvoiceId: data.rectifiesInvoiceId ?? null,
+    rectificationReason: data.rectificationReason ?? null,
     aeat: { ...defaultAeat(), ...(data.aeat || {}) },
     checklist: { ...defaultChecklist(), ...(data.checklist || {}) },
     createdAt: data.createdAt ?? null,
@@ -161,6 +164,9 @@ export async function createInvoice(userId: string, input: InvoiceInput): Promis
     irpfRate: input.irpfRate ?? null,
     notes: input.notes ?? null,
     status: input.status || "DRAFT",
+    invoiceType: input.invoiceType || "ORDINARY",
+    rectifiesInvoiceId: input.rectifiesInvoiceId ?? null,
+    rectificationReason: input.rectificationReason ?? null,
     aeat,
     checklist,
     createdAt: now,
@@ -190,6 +196,9 @@ export async function updateInvoice(id: string, input: InvoiceInput): Promise<In
   if (input.irpfRate !== undefined) updates.irpfRate = input.irpfRate;
   if (input.notes !== undefined) updates.notes = input.notes;
   if (input.status !== undefined) updates.status = input.status;
+  if (input.invoiceType !== undefined) updates.invoiceType = input.invoiceType;
+  if (input.rectifiesInvoiceId !== undefined) updates.rectifiesInvoiceId = input.rectifiesInvoiceId;
+  if (input.rectificationReason !== undefined) updates.rectificationReason = input.rectificationReason;
 
   const existingAeat: AeatInfo = { ...defaultAeat(), ...(existing.aeat || {}) };
   const existingChecklist: InvoiceChecklist = { ...defaultChecklist(), ...(existing.checklist || {}) };

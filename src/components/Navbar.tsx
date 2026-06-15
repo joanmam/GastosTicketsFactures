@@ -16,6 +16,13 @@ export default function Navbar() {
         : "text-gray-600 hover:bg-gray-100"
     }`;
 
+  const sectionLinkClass = (href: string) =>
+    `px-3 py-2 rounded-md text-sm font-medium ${
+      pathname === href || pathname.startsWith(`${href}/`)
+        ? "bg-brand-600 text-white"
+        : "text-gray-600 hover:bg-gray-100"
+    }`;
+
   async function handleSignOut() {
     await signOut();
     router.push("/login");
@@ -31,6 +38,16 @@ export default function Navbar() {
           </Link>
           <Link href="/tickets/new" className={linkClass("/tickets/new")}>
             Escanejar
+          </Link>
+          <span className="border-l border-gray-200 h-5 mx-1" />
+          <Link href="/clients" className={sectionLinkClass("/clients")}>
+            👥 Clients
+          </Link>
+          <Link href="/invoices" className={sectionLinkClass("/invoices")}>
+            🧾 Factures
+          </Link>
+          <Link href="/facturacio" className={linkClass("/facturacio")}>
+            📊 Facturació
           </Link>
         </div>
         <div className="flex items-center gap-3 text-sm text-gray-600">

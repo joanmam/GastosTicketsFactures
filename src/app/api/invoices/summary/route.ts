@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, unauthorized } from "@/lib/server-auth";
 import { listInvoices } from "@/lib/invoices-db";
 import { listTickets } from "@/lib/tickets-db";
+import { listPurchasesForUser } from "@/lib/purchases-db";
 import { computeInvoiceTotals, quarterOf, round2 } from "@/lib/invoice-calc";
 
 export const runtime = "nodejs";
@@ -13,14 +14,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const year = Number(searchParams.get("year")) || new Date().getFullYear();
 
-  const [invoices, tickets] = await Promise.all([listInvoices({}), listTickets({})]);
+  const [invoices, tickets, purchases] = await Promise.all([
+    listInvoices({}),
+    listTickets({}),
+    listPurchasesForUser(user.uid, {}),
+  ]);
 
   const yearInvoices = invoices.filter((i) => i.date && Number(i.date.slice(0, 4)) === year);
   const yearTickets = tickets.filter((t) => t.date && Number(t.date.slice(0, 4)) === year);
+  const yearPurchases = purchases.filter((p) => p.date && Number(p.date.slice(0, 4)) === year);
 
   const quarters = [1, 2, 3, 4].map((q) => {
     const qInvoices = yearInvoices.filter((i) => quarterOf(i.date!) === q);
     const qTickets = yearTickets.filter((t) => quarterOf(t.date!) === q);
+    const qPurchases = yearPurchases.filter((p) => quarterOf(p.date) === q);
 
     let baseImposable = 0;
     let vatTotal = 0;
@@ -39,15 +46,25 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const expenses = qTickets.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+    const ticketExpenses = qTickets.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+    // Compres amb targeta: imports negatius = despesa, positius = abonament
+    const purchaseExpenses = qPurchases.reduce(
+      (sum, p) => sum + Math.abs(p.import < 0 ? p.import : 0),
+      0
+    );
+    const purchaseRefunds = qPurchases.reduce(
+      (sum, p) => sum + (p.import > 0 ? p.import : 0),
+      0
+    );
+    const expenses = ticketExpenses + purchaseExpenses - purchaseRefunds;
 
     return {
       quarter: q,
       invoiceCount: qInvoices.length,
-      baseImposable: round2(baseImposable), // Model 130 (ingressos)
+      baseImposable: round2(baseImposable),
       vatByRate,
-      vatTotal: round2(vatTotal), // Model 303 (IVA repercutit)
-      irpfAmount: round2(irpfAmount), // retencions practicades
+      vatTotal: round2(vatTotal),
+      irpfAmount: round2(irpfAmount),
       total: round2(total),
       expenses: round2(expenses),
       balance: round2(baseImposable - expenses),

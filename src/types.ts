@@ -62,7 +62,7 @@ export interface InvoiceLineItem {
 /**
  * Estat de gestió interna de la factura.
  * DRAFT = Esborrany, PENDING_AEAT = Pendent AEAT, SENT = Enviada al client,
- * PAID = Pagada, OVERDUE = Vençuda.
+ * PAID = Pagada, OVERDUE = Veñcuda.
  */
 export type InvoiceStatus = "DRAFT" | "PENDING_AEAT" | "SENT" | "PAID" | "OVERDUE";
 
@@ -183,4 +183,25 @@ export interface Quote extends QuoteInput {
   userId: string;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Compres (moviments de targeta, importats des de XML CaixaBank)
+// ---------------------------------------------------------------------------
+
+export interface PurchaseInput {
+  date: string;           // data ISO (YYYY-MM-DD)
+  concepte: string;       // descripció del moviment
+  categoria: string;      // categoria assignada pel banc
+  import: number;         // import en EUR (negatiu = despesa, positiu = abonament/devolució)
+  tipusMoviment: string;  // p.ex. "Despesa (D)"
+  compteTarjeta: string;  // p.ex. "MyCard ...8817"
+  sourceFile: string;     // nom del fitxer XML origen
+  sourceKey: string;      // clau única per evitar duplicats
+}
+
+export interface Purchase extends PurchaseInput {
+  id: string;
+  userId: string;
+  createdAt?: string | null;
 }

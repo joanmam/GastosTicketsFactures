@@ -39,15 +39,15 @@ export default function Navbar() {
           <Link href="/tickets/new" className={linkClass("/tickets/new")}>
             Escanejar
           </Link>
+          <Link href="/compres" className={sectionLinkClass("/compres")}>
+            🛒 Compres
+          </Link>
           <span className="border-l border-gray-200 h-5 mx-1" />
           <Link href="/clients" className={sectionLinkClass("/clients")}>
             👥 Clients
           </Link>
           <Link href="/invoices" className={sectionLinkClass("/invoices")}>
             🧾 Factures
-          </Link>
-          <Link href="/facturacio" className={linkClass("/facturacio")}>
-            📊 Facturació
           </Link>
           <Link href="/conceptes" className={sectionLinkClass("/conceptes")}>
             📚 Conceptes
@@ -57,6 +57,10 @@ export default function Navbar() {
           </Link>
         </div>
         <div className="flex items-center gap-3 text-sm text-gray-600">
+          <Link href="/facturacio" className={linkClass("/facturacio")}>
+            📊 Resum
+          </Link>
+          <span className="border-l border-gray-200 h-5" />
           {(user?.displayName || user?.email) && <span>{user.displayName || user.email}</span>}
           <button onClick={handleSignOut} className="text-sm text-gray-500 hover:text-gray-900">
             Tancar sessió

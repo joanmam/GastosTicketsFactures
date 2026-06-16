@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiFetch, apiJson } from "@/lib/api-client";
@@ -14,6 +15,7 @@ function formatAmount(amount: number) {
 }
 
 function InvoicesPageContent() {
+  const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ function InvoicesPageContent() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [clientId, setClientId] = useState("");
-  const [quarter, setQuarter] = useState("");
+  const [quarter, setQuarter] = useState(() => searchParams.get("quarter") || "");
 
   const currentYear = new Date().getFullYear();
   const quarterOptions = useMemo(() => {

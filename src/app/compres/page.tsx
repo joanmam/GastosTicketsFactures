@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiJson } from "@/lib/api-client";
@@ -11,6 +12,7 @@ function formatAmount(n: number) {
 }
 
 function CompresContent() {
+  const searchParams = useSearchParams();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -18,8 +20,8 @@ function CompresContent() {
   const [error, setError] = useState<string | null>(null);
 
   const [categoria, setCategoria] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => searchParams.get("from") || "");
+  const [to, setTo] = useState(() => searchParams.get("to") || "");
 
   const load = useCallback(async () => {
     setLoading(true);

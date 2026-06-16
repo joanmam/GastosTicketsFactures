@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiJson } from "@/lib/api-client";
@@ -16,8 +17,20 @@ interface QuarterSummary {
   vatTotal: number;
   irpfAmount: number;
   total: number;
+  ticketExpenses: number;
+  purchaseExpenses: number;
   expenses: number;
   balance: number;
+}
+
+function quarterDateRange(year: number, q: number) {
+  const ranges = [
+    { from: `${year}-01-01`, to: `${year}-03-31` },
+    { from: `${year}-04-01`, to: `${year}-06-30` },
+    { from: `${year}-07-01`, to: `${year}-09-30` },
+    { from: `${year}-10-01`, to: `${year}-12-31` },
+  ];
+  return ranges[q - 1];
 }
 
 interface Totals {
@@ -66,11 +79,13 @@ function formatAmount(n: number) {
 }
 
 function DashboardContent() {
+  const router = useRouter();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [data, setData] = useState<SummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedQ, setExpandedQ] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,14 +117,10 @@ function DashboardContent() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-xl font-semibold text-gray-900">Resum de facturació</h1>
           <div>
-            <label htmlFor="year" className="sr-only">
-              Any
-            </label>
+            <label htmlFor="year" className="sr-only">Any</label>
             <select id="year" value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-auto">
               {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
+                <option key={y} value={y}>{y}</option>
               ))}
             </select>
           </div>
@@ -202,37 +213,68 @@ function DashboardContent() {
             <div className="card space-y-3">
               <h2 className="text-sm font-medium text-gray-500 uppercase">Ingressos vs. despeses per trimestre</h2>
               <div className="space-y-3">
-                {data.quarters.map((q) => (
-                  <div key={q.quarter} className="space-y-1">
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>T{q.quarter}</span>
-                      <span>
-                        {formatAmount(q.baseImposable)} / −{formatAmount(q.expenses)}
-                      </span>
+                {data.quarters.map((q) => {
+                  const qKey = `${data.year}-${q.quarter}`;
+                  const { from, to } = quarterDateRange(data.year, q.quarter);
+                  const isExpanded = expandedQ === q.quarter;
+                  return (
+                    <div key={q.quarter} className="space-y-1">
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>T{q.quarter}</span>
+                        <span>{formatAmount(q.baseImposable)} / −{formatAmount(q.expenses)}</span>
+                      </div>
+                      <div className="flex h-3">
+                        <button
+                          className="bg-brand-500 hover:bg-brand-600 rounded-sm transition-colors cursor-pointer h-full"
+                          style={{ width: `${(q.baseImposable / maxScale) * 100}%`, minWidth: q.baseImposable > 0 ? "4px" : "0" }}
+                          title={`Ingressos T${q.quarter}: ${formatAmount(q.baseImposable)} — clic per veure factures`}
+                          onClick={() => router.push(`/invoices?quarter=${qKey}`)}
+                        />
+                      </div>
+                      <div className="flex h-3">
+                        <button
+                          className={`rounded-sm transition-colors cursor-pointer h-full ${isExpanded ? "bg-red-400" : "bg-red-300 hover:bg-red-400"}`}
+                          style={{ width: `${(q.expenses / maxScale) * 100}%`, minWidth: q.expenses > 0 ? "4px" : "0" }}
+                          title={`Despeses T${q.quarter}: ${formatAmount(q.expenses)} — clic per veure detall`}
+                          onClick={() => setExpandedQ(isExpanded ? null : q.quarter)}
+                        />
+                      </div>
+                      {isExpanded && (
+                        <div className="rounded-md bg-gray-50 border border-gray-200 p-2 text-xs space-y-1.5 mt-1">
+                          <div className="flex justify-between items-center">
+                            <button
+                              className="text-brand-700 hover:underline text-left"
+                              onClick={() => router.push(`/tickets?from=${from}&to=${to}`)}
+                            >
+                              🧾 Tickets (rebuts escanejats)
+                            </button>
+                            <span className="text-gray-600 font-medium">−{formatAmount(q.ticketExpenses)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <button
+                              className="text-brand-700 hover:underline text-left"
+                              onClick={() => router.push(`/compres?from=${from}&to=${to}`)}
+                            >
+                              🛒 Compres amb targeta
+                            </button>
+                            <span className="text-gray-600 font-medium">−{formatAmount(q.purchaseExpenses)}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-gray-200 pt-1">
+                            <span className="text-gray-500">Total despeses T{q.quarter}</span>
+                            <span className="font-semibold text-red-600">−{formatAmount(q.expenses)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1 h-3">
-                      <div
-                        className="bg-brand-500 rounded-sm"
-                        style={{ width: `${(q.baseImposable / maxScale) * 100}%` }}
-                        title={`Ingressos: ${formatAmount(q.baseImposable)}`}
-                      />
-                    </div>
-                    <div className="flex gap-1 h-3">
-                      <div
-                        className="bg-red-300 rounded-sm"
-                        style={{ width: `${(q.expenses / maxScale) * 100}%` }}
-                        title={`Despeses: ${formatAmount(q.expenses)}`}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex gap-4 text-xs text-gray-500 pt-1">
                 <span className="flex items-center gap-1">
-                  <span className="inline-block w-3 h-3 rounded-sm bg-brand-500" /> Ingressos (base imposable)
+                  <span className="inline-block w-3 h-3 rounded-sm bg-brand-500" /> Ingressos (clic → factures)
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block w-3 h-3 rounded-sm bg-red-300" /> Despeses
+                  <span className="inline-block w-3 h-3 rounded-sm bg-red-300" /> Despeses (clic → detall)
                 </span>
               </div>
             </div>

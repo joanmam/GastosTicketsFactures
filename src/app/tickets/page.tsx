@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiFetch, apiJson } from "@/lib/api-client";
@@ -14,6 +15,7 @@ function formatAmount(amount: number | null | undefined, currency?: string) {
 }
 
 function TicketsPageContent() {
+  const searchParams = useSearchParams();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +23,8 @@ function TicketsPageContent() {
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(() => searchParams.get("from") || "");
+  const [to, setTo] = useState(() => searchParams.get("to") || "");
 
   const load = useCallback(async () => {
     setLoading(true);

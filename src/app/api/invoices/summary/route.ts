@@ -47,7 +47,6 @@ export async function GET(req: NextRequest) {
     }
 
     const ticketExpenses = qTickets.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
-    // Compres amb targeta: imports negatius = despesa, positius = abonament
     const purchaseExpenses = qPurchases.reduce(
       (sum, p) => sum + Math.abs(p.import < 0 ? p.import : 0),
       0
@@ -56,7 +55,8 @@ export async function GET(req: NextRequest) {
       (sum, p) => sum + (p.import > 0 ? p.import : 0),
       0
     );
-    const expenses = ticketExpenses + purchaseExpenses - purchaseRefunds;
+    const netPurchaseExpenses = purchaseExpenses - purchaseRefunds;
+    const expenses = ticketExpenses + netPurchaseExpenses;
 
     return {
       quarter: q,
@@ -66,6 +66,8 @@ export async function GET(req: NextRequest) {
       vatTotal: round2(vatTotal),
       irpfAmount: round2(irpfAmount),
       total: round2(total),
+      ticketExpenses: round2(ticketExpenses),
+      purchaseExpenses: round2(netPurchaseExpenses),
       expenses: round2(expenses),
       balance: round2(baseImposable - expenses),
     };

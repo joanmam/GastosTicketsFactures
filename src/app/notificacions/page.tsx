@@ -11,6 +11,8 @@ const SOURCE_LABEL: Record<NotificationSource, string> = {
   SS: "🏥 Seguretat Social",
   BOE: "📜 BOE",
   DOGC: "📋 DOGC",
+  ATC: "🔶 ATC Catalunya",
+  Infoautonomos: "📰 Infoautónomos",
 };
 
 const SOURCE_COLOR: Record<NotificationSource, string> = {
@@ -18,6 +20,8 @@ const SOURCE_COLOR: Record<NotificationSource, string> = {
   SS: "bg-green-100 text-green-800",
   BOE: "bg-yellow-100 text-yellow-800",
   DOGC: "bg-purple-100 text-purple-800",
+  ATC: "bg-orange-100 text-orange-800",
+  Infoautonomos: "bg-teal-100 text-teal-800",
 };
 
 function NotificacionsContent() {
@@ -199,7 +203,7 @@ function NotificacionsContent() {
         )}
 
         <p className="text-xs text-gray-400 text-center pt-2">
-          Fonts: AEAT · Seguretat Social · BOE · DOGC — actualització setmanal automàtica
+          Fonts: AEAT · Seguretat Social · BOE · DOGC · ATC Catalunya · Infoautónomos — actualització setmanal automàtica
         </p>
       </main>
     </>

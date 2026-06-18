@@ -109,7 +109,7 @@ async function fetchSource(
 export async function fetchAllNotifications(
   since = "2026-01-01"
 ): Promise<Omit<Notification, "id">[]> {
-  const [aeat, boe, ss, dogc] = await Promise.allSettled([
+  const [aeat, boe, ss, dogc, atc, infoautonomos] = await Promise.allSettled([
     // AEAT: totes les novedades (ja parlen d'autònoms o no)
     fetchSource(
       "https://sede.agenciatributaria.gob.es/Sede/todas-noticias.xml",
@@ -138,10 +138,24 @@ export async function fetchAllNotifications(
       true,
       since
     ),
+    // ATC (Agència Tributària de Catalunya): filtrar per paraules clau
+    fetchSource(
+      "https://atc.gencat.cat/ca/novetats_i_comunicats/novetats/rss.xml",
+      "ATC",
+      true,
+      since
+    ),
+    // Infoautónomos: ja és una font curada, sense filtre
+    fetchSource(
+      "https://www.infoautonomos.com/feed/",
+      "Infoautonomos",
+      false,
+      since
+    ),
   ]);
 
   const results: Omit<Notification, "id">[] = [];
-  for (const r of [aeat, boe, ss, dogc]) {
+  for (const r of [aeat, boe, ss, dogc, atc, infoautonomos]) {
     if (r.status === "fulfilled") results.push(...r.value);
   }
   return results;

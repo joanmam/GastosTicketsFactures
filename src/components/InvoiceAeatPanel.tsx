@@ -29,13 +29,23 @@ export default function InvoiceAeatPanel({
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-semibold text-gray-900">Document oficial AEAT</h3>
-        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm border ${AEAT_STATUS_COLOR[aeat.status]}`}>
-          {current.icon} {current.label}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href="https://sede.agenciatributaria.gob.es/Sede/ayuda/consultas-informaticas/presentacion-declaraciones-ayuda-tecnica/aplicacion-gratuita-verifactu-aeat/emision-facturas.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+          >
+            🔗 Obrir VERI*FACTU (AEAT)
+          </a>
+          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm border ${AEAT_STATUS_COLOR[aeat.status]}`}>
+            {current.icon} {current.label}
+          </span>
+        </div>
       </div>
 
       <p className="text-xs text-gray-500">
-        Recorda: la factura oficial sempre és la que genera la Sede Electrònica de la AEAT. Aquesta app
+        Recorda: la factura oficial sempre és la que genera la Sede Electrònica de la AEAT (VERI*FACTU). Aquesta app
         només serveix de control intern.
       </p>
 

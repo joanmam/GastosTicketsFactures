@@ -205,3 +205,20 @@ export interface Purchase extends PurchaseInput {
   userId: string;
   createdAt?: string | null;
 }
+
+export type NotificationSource = "AEAT" | "SS" | "BOE" | "DOGC";
+
+export interface Notification {
+  id: string;
+  source: NotificationSource;
+  title: string;
+  summary: string;
+  url: string;
+  publishedAt: string; // ISO date YYYY-MM-DD
+  fetchedAt: string;
+  sourceKey: string;   // dedup key
+}
+
+export interface NotificationWithRead extends Notification {
+  isRead: boolean;
+}

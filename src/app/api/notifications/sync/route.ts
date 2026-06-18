@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, unauthorized } from "@/lib/server-auth";
-import { getExistingSourceKeys, createNotifications } from "@/lib/notifications-db";
+import { getExistingSourceKeys, createNotifications, deleteNotificationsBySource } from "@/lib/notifications-db";
+
+// Fonts que han estat eliminades i cal netejar de Firestore
+const REMOVED_SOURCES = ["BOE"];
 import { fetchAllNotifications } from "@/lib/fetch-notifications";
 
 export const runtime = "nodejs";
@@ -10,6 +13,11 @@ export async function POST(req: NextRequest) {
   if (!user) return unauthorized();
 
   try {
+    // Netejar fonts eliminades
+    for (const src of REMOVED_SOURCES) {
+      await deleteNotificationsBySource(src);
+    }
+
     const fetched = await fetchAllNotifications("2026-01-01");
 
     const existingKeys = await getExistingSourceKeys();

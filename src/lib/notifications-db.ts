@@ -76,6 +76,16 @@ export async function markAsRead(userId: string, notificationId: string): Promis
     .set({ readAt: new Date().toISOString() });
 }
 
+export async function deleteNotificationsBySource(source: string): Promise<number> {
+  const db = getAdminDb();
+  const snap = await db.collection(COLLECTION).where("source", "==", source).get();
+  if (snap.empty) return 0;
+  const batch = db.batch();
+  for (const doc of snap.docs) batch.delete(doc.ref);
+  await batch.commit();
+  return snap.docs.length;
+}
+
 export async function markAllAsRead(userId: string): Promise<void> {
   const db = getAdminDb();
   const snap = await db.collection(COLLECTION).select().get();

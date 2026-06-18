@@ -109,19 +109,12 @@ async function fetchSource(
 export async function fetchAllNotifications(
   since = "2026-01-01"
 ): Promise<Omit<Notification, "id">[]> {
-  const [aeat, boe, ss, dogc, atc, infoautonomos] = await Promise.allSettled([
+  const [aeat, ss, dogc, atc, infoautonomos] = await Promise.allSettled([
     // AEAT: totes les novedades (ja parlen d'autònoms o no)
     fetchSource(
       "https://sede.agenciatributaria.gob.es/Sede/todas-noticias.xml",
       "AEAT",
       false, // mostrar totes (son seleccionades per la AEAT)
-      since
-    ),
-    // BOE: filtrar per paraules clau
-    fetchSource(
-      "https://www.boe.es/rss/boe.php",
-      "BOE",
-      true,
       since
     ),
     // SS: novedades legislatives
@@ -155,7 +148,7 @@ export async function fetchAllNotifications(
   ]);
 
   const results: Omit<Notification, "id">[] = [];
-  for (const r of [aeat, boe, ss, dogc, atc, infoautonomos]) {
+  for (const r of [aeat, ss, dogc, atc, infoautonomos]) {
     if (r.status === "fulfilled") results.push(...r.value);
   }
   return results;

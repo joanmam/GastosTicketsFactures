@@ -206,7 +206,7 @@ export interface Purchase extends PurchaseInput {
   createdAt?: string | null;
 }
 
-export type NotificationSource = "AEAT" | "SS" | "BOE" | "DOGC" | "ATC" | "Infoautonomos";
+export type NotificationSource = "AEAT" | "SS" | "DOGC" | "ATC" | "Infoautonomos";
 
 export interface Notification {
   id: string;

@@ -119,9 +119,24 @@ export default function InvoiceForm({
 
   const totals = computeInvoiceTotals(form.items || [], form.irpfRate);
   const snapshot = form.clientSnapshot;
+  const isLocked =
+    form.checklist?.dataEnteredAeat === true ||
+    ["SENT", "PAID", "OVERDUE"].includes(form.status || "");
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* Banner de bloqueig */}
+      {isLocked && (
+        <div className="rounded-md bg-amber-50 border border-amber-300 px-4 py-3 flex items-center gap-2 text-sm text-amber-800">
+          <span className="text-base">🔒</span>
+          <span>
+            Factura <strong>bloquejada</strong> — registrada a l&apos;AEAT o ja enviada al client. El contingut no es pot modificar.
+            Pots canviar l&apos;estat, el panell AEAT i el checklist.
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <div>
           <label htmlFor="number">Número de factura</label>
@@ -131,11 +146,20 @@ export default function InvoiceForm({
             value={form.number || ""}
             onChange={(e) => update("number", e.target.value)}
             placeholder="Es genera automàticament"
+            readOnly={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
           />
         </div>
         <div>
           <label htmlFor="date">Data de factura</label>
-          <input id="date" type="date" value={form.date || ""} onChange={(e) => update("date", e.target.value)} />
+          <input
+            id="date"
+            type="date"
+            value={form.date || ""}
+            onChange={(e) => update("date", e.target.value)}
+            readOnly={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
+          />
         </div>
         <div>
           <label htmlFor="dueDate">Data de venciment</label>
@@ -144,6 +168,8 @@ export default function InvoiceForm({
             type="date"
             value={form.dueDate || ""}
             onChange={(e) => update("dueDate", e.target.value)}
+            readOnly={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
           />
         </div>
         <div>
@@ -162,6 +188,8 @@ export default function InvoiceForm({
             id="invoiceType"
             value={form.invoiceType || "ORDINARY"}
             onChange={(e) => update("invoiceType", e.target.value as InvoiceType)}
+            disabled={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
           >
             {INVOICE_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -181,6 +209,8 @@ export default function InvoiceForm({
               id="rectifiesInvoiceId"
               value={form.rectifiesInvoiceId || ""}
               onChange={(e) => update("rectifiesInvoiceId", e.target.value || null)}
+              disabled={isLocked}
+              className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
             >
               <option value="">Selecciona la factura original...</option>
               {invoices
@@ -200,6 +230,8 @@ export default function InvoiceForm({
               value={form.rectificationReason || ""}
               onChange={(e) => update("rectificationReason", e.target.value)}
               placeholder="Ex: error en l'import, canvi de dades del client, devolució parcial..."
+              readOnly={isLocked}
+              className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
             />
           </div>
         </div>
@@ -208,7 +240,13 @@ export default function InvoiceForm({
       <div className="card space-y-3">
         <div>
           <label htmlFor="clientId">Client</label>
-          <select id="clientId" value={form.clientId || ""} onChange={(e) => handleClientChange(e.target.value)}>
+          <select
+            id="clientId"
+            value={form.clientId || ""}
+            onChange={(e) => handleClientChange(e.target.value)}
+            disabled={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
+          >
             <option value="">Selecciona un client...</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
@@ -239,9 +277,11 @@ export default function InvoiceForm({
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="mb-0">Línies de factura</label>
-          <button type="button" className="btn-secondary text-xs" onClick={addItem}>
-            + Afegir línia
-          </button>
+          {!isLocked && (
+            <button type="button" className="btn-secondary text-xs" onClick={addItem}>
+              + Afegir línia
+            </button>
+          )}
         </div>
         {(form.items || []).length === 0 && (
           <p className="text-sm text-gray-500">No hi ha línies. Afegeix-ne una.</p>
@@ -255,8 +295,10 @@ export default function InvoiceForm({
                   type="text"
                   value={item.description}
                   onChange={(e) => handleDescriptionChange(i, e.target.value)}
-                  list="line-item-catalog"
+                  list={isLocked ? undefined : "line-item-catalog"}
                   required
+                  readOnly={isLocked}
+                  className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
                 />
               </div>
               <div className="col-span-3 sm:col-span-2">
@@ -266,6 +308,8 @@ export default function InvoiceForm({
                   step="0.01"
                   value={item.quantity ?? ""}
                   onChange={(e) => updateItem(i, { quantity: e.target.value === "" ? 0 : Number(e.target.value) })}
+                  readOnly={isLocked}
+                  className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
                 />
               </div>
               <div className="col-span-3 sm:col-span-2">
@@ -275,11 +319,18 @@ export default function InvoiceForm({
                   step="0.01"
                   value={item.unitPrice ?? ""}
                   onChange={(e) => updateItem(i, { unitPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
+                  readOnly={isLocked}
+                  className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
                 />
               </div>
               <div className="col-span-3 sm:col-span-1">
                 {i === 0 && <label className="text-xs">% IVA</label>}
-                <select value={item.vatRate} onChange={(e) => updateItem(i, { vatRate: Number(e.target.value) })}>
+                <select
+                  value={item.vatRate}
+                  onChange={(e) => updateItem(i, { vatRate: Number(e.target.value) })}
+                  disabled={isLocked}
+                  className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
+                >
                   {VAT_RATES.map((r) => (
                     <option key={r} value={r}>
                       {r}%
@@ -292,23 +343,27 @@ export default function InvoiceForm({
                 <p className="text-sm py-2 text-right pr-1">{formatAmount(lineTotal(item))}</p>
               </div>
               <div className="col-span-1">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs w-full"
-                  onClick={() => removeItem(i)}
-                  aria-label="Eliminar línia"
-                >
-                  ✕
-                </button>
+                {!isLocked && (
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs w-full"
+                    onClick={() => removeItem(i)}
+                    aria-label="Eliminar línia"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
-        <datalist id="line-item-catalog">
-          {catalog.map((c) => (
-            <option key={c.id} value={c.description || ""} />
-          ))}
-        </datalist>
+        {!isLocked && (
+          <datalist id="line-item-catalog">
+            {catalog.map((c) => (
+              <option key={c.id} value={c.description || ""} />
+            ))}
+          </datalist>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -318,6 +373,8 @@ export default function InvoiceForm({
             id="irpfRate"
             value={form.irpfRate ?? 15}
             onChange={(e) => update("irpfRate", Number(e.target.value))}
+            disabled={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
           >
             {IRPF_RATES.map((r) => (
               <option key={r} value={r}>
@@ -328,7 +385,14 @@ export default function InvoiceForm({
         </div>
         <div>
           <label htmlFor="notes">Notes / observacions</label>
-          <input id="notes" type="text" value={form.notes || ""} onChange={(e) => update("notes", e.target.value)} />
+          <input
+            id="notes"
+            type="text"
+            value={form.notes || ""}
+            onChange={(e) => update("notes", e.target.value)}
+            readOnly={isLocked}
+            className={isLocked ? "bg-gray-50 text-gray-500 cursor-not-allowed" : ""}
+          />
         </div>
       </div>
 
@@ -383,7 +447,7 @@ export default function InvoiceForm({
 
       <div className="flex items-center justify-between gap-2 pt-2">
         <div>
-          {onDelete && (
+          {onDelete && !isLocked && (
             <button type="button" className="btn-danger" onClick={() => onDelete()} disabled={saving}>
               Eliminar
             </button>

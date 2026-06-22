@@ -96,12 +96,12 @@ function InvoicesPageContent() {
   }
 
   const pendingAeatCount = invoices.filter((i) => i.aeat?.status === "PENDING").length;
-  const total = invoices.reduce((sum, i) => sum + computeInvoiceTotals(i.items || [], i.irpfRate).total, 0);
+  const totalGeneral = invoices.reduce((sum, i) => sum + computeInvoiceTotals(i.items || [], i.irpfRate).total, 0);
 
   return (
     <>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-xl font-semibold text-gray-900">Factures</h1>
           <div className="flex gap-2">
@@ -181,6 +181,9 @@ function InvoicesPageContent() {
                   <th className="px-4 py-2 font-medium">Número</th>
                   <th className="px-4 py-2 font-medium">Data</th>
                   <th className="px-4 py-2 font-medium">Client</th>
+                  <th className="px-4 py-2 font-medium text-right">Subtotal</th>
+                  <th className="px-4 py-2 font-medium text-right">IVA</th>
+                  <th className="px-4 py-2 font-medium text-right">Retenció</th>
                   <th className="px-4 py-2 font-medium text-right">Total</th>
                   <th className="px-4 py-2 font-medium">Venciment</th>
                   <th className="px-4 py-2 font-medium">Estat</th>
@@ -202,6 +205,11 @@ function InvoicesPageContent() {
                                 Rectificativa
                               </span>
                             )}
+                            {(inv as any).importSource === "Holded" && (
+                              <span className="ml-2 inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-700 align-middle">
+                                Holded
+                              </span>
+                            )}
                           </span>
                         </Link>
                       </td>
@@ -211,7 +219,16 @@ function InvoicesPageContent() {
                       <td className="px-4 py-2">
                         <Link href={`/invoices/${inv.id}`}>{inv.clientSnapshot?.name || "—"}</Link>
                       </td>
-                      <td className="px-4 py-2 text-right">
+                      <td className="px-4 py-2 text-right text-gray-700">
+                        <Link href={`/invoices/${inv.id}`}>{formatAmount(totals.baseImposable)}</Link>
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-700">
+                        <Link href={`/invoices/${inv.id}`}>{formatAmount(totals.vatTotal)}</Link>
+                      </td>
+                      <td className="px-4 py-2 text-right text-red-600">
+                        <Link href={`/invoices/${inv.id}`}>{totals.irpfAmount !== 0 ? `-${formatAmount(Math.abs(totals.irpfAmount))}` : "—"}</Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-medium">
                         <Link href={`/invoices/${inv.id}`}>{formatAmount(totals.total)}</Link>
                       </td>
                       <td className="px-4 py-2">
@@ -239,10 +256,10 @@ function InvoicesPageContent() {
               </tbody>
               <tfoot>
                 <tr className="border-t border-gray-200 font-medium">
-                  <td className="px-4 py-2" colSpan={3}>
-                    Total
-                  </td>
-                  <td className="px-4 py-2 text-right">{formatAmount(total)}</td>
+                  <td className="px-4 py-2" colSpan={3}>Total</td>
+                  <td colSpan={2} />
+                  <td />
+                  <td className="px-4 py-2 text-right">{formatAmount(totalGeneral)}</td>
                   <td colSpan={3} />
                 </tr>
               </tfoot>

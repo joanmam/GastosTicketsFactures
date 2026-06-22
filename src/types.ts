@@ -100,6 +100,7 @@ export interface InvoiceChecklist {
 
 export interface InvoiceInput {
   number?: string | null; // YYYY-NNN
+  importSource?: string | null; // p.ex. "Holded" quan ve d'importació
   clientId?: string | null;
   clientSnapshot?: ClientInput | null;
   date?: string | null; // data de factura (ISO)
@@ -198,6 +199,7 @@ export interface PurchaseInput {
   compteTarjeta: string;  // p.ex. "MyCard ...8817"
   sourceFile: string;     // nom del fitxer XML origen
   sourceKey: string;      // clau única per evitar duplicats
+  importSource?: string | null; // p.ex. "Holded" quan ve d'importació
 }
 
 export interface Purchase extends PurchaseInput {

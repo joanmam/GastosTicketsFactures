@@ -13,6 +13,7 @@ function docToPurchase(id: string, data: FirebaseFirestore.DocumentData): Purcha
     compteTarjeta: data.compteTarjeta ?? "",
     sourceFile: data.sourceFile ?? "",
     sourceKey: data.sourceKey ?? "",
+    importSource: data.importSource ?? null,
     createdAt: data.createdAt ?? null,
   };
 }

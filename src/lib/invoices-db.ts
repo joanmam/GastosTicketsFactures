@@ -12,6 +12,7 @@ function docToInvoice(doc: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFir
     id: doc.id,
     userId: data.userId ?? "",
     number: data.number ?? null,
+    importSource: data.importSource ?? null,
     clientId: data.clientId ?? null,
     clientSnapshot: data.clientSnapshot ?? null,
     date: data.date ?? null,
@@ -156,6 +157,7 @@ export async function createInvoice(userId: string, input: InvoiceInput): Promis
   const data = {
     userId,
     number,
+    importSource: input.importSource ?? null,
     clientId: input.clientId ?? null,
     clientSnapshot: input.clientSnapshot ?? null,
     date,

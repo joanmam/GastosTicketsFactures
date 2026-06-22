@@ -192,6 +192,11 @@ function CompresContent() {
                       <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">
                         {p.categoria}
                       </span>
+                      {(p as any).importSource === "Holded" && (
+                        <span className="ml-1 inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-700">
+                          Holded
+                        </span>
+                      )}
                     </td>
                     <td
                       className={`px-4 py-2 text-right font-medium whitespace-nowrap ${

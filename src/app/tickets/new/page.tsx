@@ -75,7 +75,7 @@ function NewTicketContent() {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      router.push(`/tickets/${res.ticket.id}`);
+      router.push(`/compres`);
     } catch (err: any) {
       setError(err?.message || "Error desant el ticket.");
     } finally {

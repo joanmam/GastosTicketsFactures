@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
+import QuarterFilter, { quarterToDateRange } from "@/components/QuarterFilter";
 import { apiJson } from "@/lib/api-client";
 import type { Purchase } from "@/types";
 
@@ -203,6 +204,19 @@ function CompresContent() {
   const [categoria, setCategoria] = useState("");
   const [from, setFrom] = useState(() => searchParams.get("from") || "");
   const [to, setTo] = useState(() => searchParams.get("to") || "");
+  const [activeQuarter, setActiveQuarter] = useState("");
+
+  function handleQuarterChange(val: string) {
+    setActiveQuarter(val);
+    const range = quarterToDateRange(val);
+    if (range) {
+      setFrom(range.from);
+      setTo(range.to);
+    } else {
+      setFrom("");
+      setTo("");
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -300,6 +314,12 @@ function CompresContent() {
           </div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {/* Pills trimestre */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500">Trimestre:</span>
+          <QuarterFilter value={activeQuarter} onChange={handleQuarterChange} />
+        </div>
 
         {/* Filtres */}
         <div className="card grid grid-cols-1 sm:grid-cols-3 gap-3">

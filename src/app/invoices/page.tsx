@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
+import QuarterFilter from "@/components/QuarterFilter";
 import { apiFetch, apiJson } from "@/lib/api-client";
 import { AEAT_STATUS_LABEL, INVOICE_STATUSES, INVOICE_STATUS_COLOR, INVOICE_STATUS_LABEL } from "@/lib/invoice-constants";
 import { computeInvoiceTotals } from "@/lib/invoice-calc";
@@ -27,16 +28,6 @@ function InvoicesPageContent() {
   const [clientId, setClientId] = useState("");
   const [quarter, setQuarter] = useState(() => searchParams.get("quarter") || "");
 
-  const currentYear = new Date().getFullYear();
-  const quarterOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [];
-    for (const y of [currentYear - 1, currentYear, currentYear + 1]) {
-      for (const q of [1, 2, 3, 4]) {
-        opts.push({ value: `${y}-${q}`, label: `T${q} ${y}` });
-      }
-    }
-    return opts;
-  }, [currentYear]);
 
   useEffect(() => {
     apiJson<{ clients: Client[] }>("/api/clients")
@@ -154,16 +145,9 @@ function InvoicesPageContent() {
               ))}
             </select>
           </div>
-          <div>
-            <label htmlFor="quarter">Trimestre</label>
-            <select id="quarter" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
-              <option value="">Tots</option>
-              {quarterOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col justify-end">
+            <label className="text-xs text-gray-500 mb-1">Trimestre</label>
+            <QuarterFilter value={quarter} onChange={setQuarter} />
           </div>
         </div>
 

@@ -20,7 +20,20 @@ function docToPurchase(id: string, data: FirebaseFirestore.DocumentData): Purcha
     iva: data.iva ?? null,
     attachmentPath: data.attachmentPath ?? null,
     attachmentUrl: null, // es genera a l'API amb URL signada
+    notes: data.notes ?? null,
   };
+}
+
+export async function getPurchase(userId: string, id: string): Promise<Purchase | null> {
+  const db = getAdminDb();
+  const doc = await db
+    .collection("users")
+    .doc(userId)
+    .collection("purchases")
+    .doc(id)
+    .get();
+  if (!doc.exists) return null;
+  return docToPurchase(doc.id, doc.data()!);
 }
 
 export async function listPurchasesForUser(
@@ -87,7 +100,7 @@ export async function createPurchases(
 export async function updatePurchase(
   userId: string,
   id: string,
-  fields: Partial<Pick<PurchaseInput, "subtotal" | "ivaRate" | "iva" | "attachmentPath">>
+  fields: Partial<Pick<PurchaseInput, "subtotal" | "ivaRate" | "iva" | "attachmentPath" | "notes" | "concepte" | "categoria">>
 ): Promise<void> {
   const db = getAdminDb();
   await db

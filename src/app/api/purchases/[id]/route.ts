@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, unauthorized } from "@/lib/server-auth";
-import { deletePurchase, updatePurchase } from "@/lib/purchases-db";
-import { savePurchaseAttachment, deletePurchaseAttachment } from "@/lib/firebase-storage";
+import { getPurchase, deletePurchase, updatePurchase } from "@/lib/purchases-db";
+import { savePurchaseAttachment, deletePurchaseAttachment, getPurchaseAttachmentUrl } from "@/lib/firebase-storage";
 
 export const runtime = "nodejs";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const user = await getAuthUser(req);
+  if (!user) return unauthorized();
+
+  const purchase = await getPurchase(user.uid, params.id);
+  if (!purchase) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const attachmentUrl = await getPurchaseAttachmentUrl(purchase.attachmentPath);
+  return NextResponse.json({ purchase: { ...purchase, attachmentUrl } });
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -13,13 +27,16 @@ export async function PATCH(
   if (!user) return unauthorized();
 
   const body = await req.json();
-  const { subtotal, ivaRate, iva, attachmentBase64, attachmentMediaType, removeAttachment, currentAttachmentPath } = body;
+  const { subtotal, ivaRate, iva, concepte, categoria, notes, attachmentBase64, attachmentMediaType, removeAttachment, currentAttachmentPath } = body;
 
   const fields: Record<string, unknown> = {};
 
   if (subtotal !== undefined) fields.subtotal = subtotal;
   if (ivaRate !== undefined) fields.ivaRate = ivaRate;
   if (iva !== undefined) fields.iva = iva;
+  if (concepte !== undefined) fields.concepte = concepte;
+  if (categoria !== undefined) fields.categoria = categoria;
+  if (notes !== undefined) fields.notes = notes;
 
   if (removeAttachment && currentAttachmentPath) {
     await deletePurchaseAttachment(currentAttachmentPath);

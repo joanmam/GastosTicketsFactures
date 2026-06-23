@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiJson } from "@/lib/api-client";
@@ -193,6 +193,7 @@ function fileToBase64(file: File): Promise<string> {
 // ── Pàgina principal ─────────────────────────────────────────────────────────
 function CompresContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -397,7 +398,7 @@ function CompresContent() {
                   const total = Math.abs(p.import);
                   const isExpense = p.import < 0;
                   return (
-                    <tr key={p.id} className="hover:bg-gray-50">
+                    <tr key={p.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => router.push(`/compres/${p.id}`)}>
                       <td className="px-4 py-2 whitespace-nowrap">{p.date}</td>
                       <td className="px-4 py-2">{p.concepte}</td>
                       <td className="px-4 py-2">
@@ -417,7 +418,7 @@ function CompresContent() {
                           : <span className="text-gray-300">—</span>}
                       </td>
                       {/* IVA% selector */}
-                      <td className="px-4 py-2 text-center">
+                      <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                         <IvaEditor
                           purchase={p}
                           onSaved={(fields) => updatePurchaseLocal(p.id, fields)}
@@ -440,13 +441,13 @@ function CompresContent() {
                       </td>
                       <td className="px-4 py-2 text-gray-600 text-xs">{p.compteTarjeta}</td>
                       {/* Adjunt */}
-                      <td className="px-4 py-2 text-center">
+                      <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
                         <AttachmentCell
                           purchase={p}
                           onSaved={(fields) => updatePurchaseLocal(p.id, fields)}
                         />
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleDelete(p.id)}
                           className="text-xs text-gray-400 hover:text-red-600"
@@ -481,6 +482,17 @@ function CompresContent() {
           </div>
         )}
       </main>
+    </>
+  );
+}
+
+export default function CompresPage() {
+  return (
+    <AuthGuard>
+      <CompresContent />
+    </AuthGuard>
+  );
+}
     </>
   );
 }

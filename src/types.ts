@@ -209,6 +209,8 @@ export interface PurchaseInput {
   attachmentUrl?: string | null;       // URL signada temporal (només lectura)
   attachmentBase64?: string | null;    // base64 per pujar (transitori, no es desa)
   attachmentMediaType?: string | null; // MIME type del fitxer adjunt
+  // Altres
+  notes?: string | null;
 }
 
 export interface Purchase extends PurchaseInput {

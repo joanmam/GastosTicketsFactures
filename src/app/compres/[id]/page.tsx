@@ -6,7 +6,7 @@ import Link from "next/link";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import { apiJson } from "@/lib/api-client";
-import type { Purchase } from "@/types";
+import type { Purchase, IvaLine } from "@/types";
 
 const IVA_RATES = [0, 4, 10, 21];
 
@@ -23,6 +23,148 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function emptyIvaLine(): IvaLine {
+  return { ivaRate: 21, subtotal: 0, iva: 0 };
+}
+
+// Migra camps antics (subtotal/ivaRate/iva) a ivaLines si cal
+function initIvaLines(p: Purchase): IvaLine[] {
+  if (p.ivaLines && p.ivaLines.length > 0) return p.ivaLines;
+  if (p.subtotal != null && p.ivaRate != null) {
+    return [{ ivaRate: p.ivaRate, subtotal: p.subtotal, iva: p.iva ?? 0 }];
+  }
+  return [];
+}
+
+// ── Editor de línies IVA ─────────────────────────────────────────────────────
+function IvaLinesEditor({
+  lines,
+  onChange,
+}: {
+  lines: IvaLine[];
+  onChange: (lines: IvaLine[]) => void;
+}) {
+  function updateLine(i: number, field: keyof IvaLine, raw: string) {
+    const val = raw === "" ? 0 : parseFloat(raw);
+    const updated = lines.map((l, idx) => {
+      if (idx !== i) return l;
+      const next = { ...l, [field]: isNaN(val) ? 0 : val };
+      // recalcula IVA quan canvia subtotal o ivaRate
+      if (field === "subtotal" || field === "ivaRate") {
+        next.iva = parseFloat((next.subtotal * next.ivaRate / 100).toFixed(2));
+      }
+      return next;
+    });
+    onChange(updated);
+  }
+
+  function addLine() {
+    onChange([...lines, emptyIvaLine()]);
+  }
+
+  function removeLine(i: number) {
+    onChange(lines.filter((_, idx) => idx !== i));
+  }
+
+  const totalBase = lines.reduce((s, l) => s + l.subtotal, 0);
+  const totalIva = lines.reduce((s, l) => s + l.iva, 0);
+  const totalGeneral = totalBase + totalIva;
+
+  return (
+    <div className="space-y-2">
+      {lines.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500 text-left">
+                <th className="pb-1 font-medium">Base imposable</th>
+                <th className="pb-1 font-medium">IVA %</th>
+                <th className="pb-1 font-medium">IVA €</th>
+                <th className="pb-1" />
+              </tr>
+            </thead>
+            <tbody className="space-y-1">
+              {lines.map((line, i) => (
+                <tr key={i} className="align-middle">
+                  <td className="pr-2 py-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={line.subtotal || ""}
+                      onChange={(e) => updateLine(i, "subtotal", e.target.value)}
+                      placeholder="0.00"
+                      className="w-28"
+                    />
+                  </td>
+                  <td className="pr-2 py-1">
+                    <select
+                      value={line.ivaRate}
+                      onChange={(e) => updateLine(i, "ivaRate", e.target.value)}
+                      className="w-20"
+                    >
+                      {IVA_RATES.map((r) => (
+                        <option key={r} value={r}>{r}%</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="pr-2 py-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={line.iva || ""}
+                      onChange={(e) => updateLine(i, "iva", e.target.value)}
+                      placeholder="0.00"
+                      className="w-24"
+                    />
+                  </td>
+                  <td className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => removeLine(i)}
+                      className="text-gray-300 hover:text-red-500 text-sm px-1"
+                      title="Eliminar línia"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={addLine}
+        className="btn-secondary text-sm"
+      >
+        + Afegir línia IVA
+      </button>
+
+      {lines.length > 0 && (
+        <div className="mt-2 grid grid-cols-3 gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+          <div>
+            <p className="text-xs text-gray-500">Total base</p>
+            <p className="font-medium">{formatAmount(totalBase)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Total IVA</p>
+            <p className="font-medium text-orange-600">{formatAmount(totalIva)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Total</p>
+            <p className="font-semibold">{formatAmount(totalGeneral)}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Pàgina de detall ─────────────────────────────────────────────────────────
 function PurchaseDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -37,9 +179,7 @@ function PurchaseDetailContent() {
   const [concepte, setConcepte] = useState("");
   const [categoria, setCategoria] = useState("");
   const [notes, setNotes] = useState("");
-  const [ivaRate, setIvaRate] = useState<string>("");
-  const [subtotal, setSubtotal] = useState<string>("");
-  const [iva, setIva] = useState<string>("");
+  const [ivaLines, setIvaLines] = useState<IvaLine[]>([]);
 
   // Adjunt
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,9 +198,7 @@ function PurchaseDetailContent() {
         setConcepte(p.concepte ?? "");
         setCategoria(p.categoria ?? "");
         setNotes(p.notes ?? "");
-        setIvaRate(p.ivaRate != null ? String(p.ivaRate) : "");
-        setSubtotal(p.subtotal != null ? String(p.subtotal.toFixed(2)) : "");
-        setIva(p.iva != null ? String(p.iva.toFixed(2)) : "");
+        setIvaLines(initIvaLines(p));
         setAttachmentUrl(p.attachmentUrl ?? null);
         setAttachmentPath(p.attachmentPath ?? null);
       } catch (err: any) {
@@ -72,48 +210,26 @@ function PurchaseDetailContent() {
     return () => { active = false; };
   }, [params.id]);
 
-  // Quan canvia ivaRate, recalcula subtotal i iva a partir del total
-  function handleIvaRateChange(val: string) {
-    setIvaRate(val);
-    if (!purchase) return;
-    const total = Math.abs(purchase.import);
-    if (val === "") {
-      setSubtotal("");
-      setIva("");
-    } else {
-      const rate = Number(val);
-      const sub = total / (1 + rate / 100);
-      const ivaAmt = total - sub;
-      setSubtotal(sub.toFixed(2));
-      setIva(ivaAmt.toFixed(2));
-    }
-  }
-
-  // Quan l'usuari edita subtotal manualment, recalcula iva
-  function handleSubtotalChange(val: string) {
-    setSubtotal(val);
-    if (!purchase) return;
-    const total = Math.abs(purchase.import);
-    const sub = parseFloat(val);
-    if (!isNaN(sub)) {
-      setIva((total - sub).toFixed(2));
-    }
-  }
-
   async function handleSave() {
     setSaving(true);
     setError(null);
     setSuccessMsg(null);
     try {
+      // Calcula totals agregats per compatibilitat amb vista llista
+      const totalSubtotal = ivaLines.reduce((s, l) => s + l.subtotal, 0);
+      const totalIva = ivaLines.reduce((s, l) => s + l.iva, 0);
+
       await apiJson(`/api/purchases/${params.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           concepte,
           categoria,
           notes: notes || null,
-          ivaRate: ivaRate !== "" ? Number(ivaRate) : null,
-          subtotal: subtotal !== "" ? parseFloat(subtotal) : null,
-          iva: iva !== "" ? parseFloat(iva) : null,
+          ivaLines: ivaLines.length > 0 ? ivaLines : null,
+          // camps legacy per compatibilitat amb la llista
+          subtotal: ivaLines.length > 0 ? totalSubtotal : null,
+          iva: ivaLines.length > 0 ? totalIva : null,
+          ivaRate: ivaLines.length === 1 ? ivaLines[0].ivaRate : null,
         }),
       });
       setSuccessMsg("Canvis desats correctament.");
@@ -149,7 +265,6 @@ function PurchaseDetailContent() {
           currentAttachmentPath: attachmentPath,
         }),
       });
-      // Recarregar per obtenir nova URL signada
       const data = await apiJson<{ purchase: Purchase }>(`/api/purchases/${params.id}`);
       setAttachmentUrl(data.purchase.attachmentUrl ?? null);
       setAttachmentPath(data.purchase.attachmentPath ?? null);
@@ -268,53 +383,28 @@ function PurchaseDetailContent() {
             </div>
 
             {/* Desglossament IVA */}
-            <div className="card space-y-4">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Desglossament IVA</h2>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs text-gray-500">IVA %</label>
-                  <select
-                    value={ivaRate}
-                    onChange={(e) => handleIvaRateChange(e.target.value)}
-                    className="mt-0.5"
-                  >
-                    <option value="">—</option>
-                    {IVA_RATES.map((r) => (
-                      <option key={r} value={r}>{r}%</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Subtotal (base)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={subtotal}
-                    onChange={(e) => handleSubtotalChange(e.target.value)}
-                    placeholder="0.00"
-                    className="mt-0.5"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">IVA €</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={iva}
-                    onChange={(e) => setIva(e.target.value)}
-                    placeholder="0.00"
-                    className="mt-0.5"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className={`text-lg font-semibold ${isExpense ? "text-red-600" : "text-green-700"}`}>
-                  {isExpense ? "−" : "+"}{formatAmount(total)}
+            <div className="card space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Desglossament IVA</h2>
+                <span className={`text-base font-semibold ${isExpense ? "text-red-600" : "text-green-700"}`}>
+                  Total: {isExpense ? "−" : "+"}{formatAmount(total)}
                 </span>
               </div>
+
+              <IvaLinesEditor lines={ivaLines} onChange={setIvaLines} />
+
+              {ivaLines.length > 0 && (() => {
+                const sumTotal = ivaLines.reduce((s, l) => s + l.subtotal + l.iva, 0);
+                const diff = Math.abs(total - sumTotal);
+                if (diff > 0.05) {
+                  return (
+                    <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">
+                      ⚠️ La suma de les línies ({formatAmount(sumTotal)}) no coincideix amb el total ({formatAmount(total)}). Diferència: {formatAmount(diff)}
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Adjunt */}
@@ -325,7 +415,6 @@ function PurchaseDetailContent() {
                 <p className="text-sm text-gray-500">Pujant...</p>
               ) : attachmentUrl ? (
                 <div className="space-y-2">
-                  {/* Preview si és imatge */}
                   {attachmentPath && /\.(jpg|jpeg|png)$/i.test(attachmentPath) ? (
                     <img
                       src={attachmentUrl}
@@ -343,10 +432,7 @@ function PurchaseDetailContent() {
                     </a>
                   )}
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn-secondary text-sm"
-                    >
+                    <button onClick={() => fileInputRef.current?.click()} className="btn-secondary text-sm">
                       🔄 Substituir
                     </button>
                     <button
@@ -359,10 +445,7 @@ function PurchaseDetailContent() {
                 </div>
               ) : (
                 <div>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="btn-secondary"
-                  >
+                  <button onClick={() => fileInputRef.current?.click()} className="btn-secondary">
                     ⬆️ Pujar PDF o imatge
                   </button>
                   <p className="text-xs text-gray-400 mt-1">PDF, JPG o PNG. Màx. 10 MB.</p>
@@ -382,18 +465,13 @@ function PurchaseDetailContent() {
               />
             </div>
 
-            {/* Fitxer origen (read-only) */}
             {purchase.sourceFile && (
               <p className="text-xs text-gray-400">Origen: {purchase.sourceFile}</p>
             )}
 
-            {/* Botons acció */}
+            {/* Botons */}
             <div className="flex gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="btn-primary flex-1"
-              >
+              <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
                 {saving ? "Desant..." : "💾 Desar canvis"}
               </button>
               <Link href="/compres" className="btn-secondary text-center">

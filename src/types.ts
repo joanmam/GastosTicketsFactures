@@ -190,6 +190,12 @@ export interface Quote extends QuoteInput {
 // Compres (moviments de targeta, importats des de XML CaixaBank)
 // ---------------------------------------------------------------------------
 
+export interface IvaLine {
+  ivaRate: number;   // tipus IVA: 0, 4, 10, 21
+  subtotal: number;  // base imposable d'aquesta línia
+  iva: number;       // import IVA = subtotal * ivaRate / 100
+}
+
 export interface PurchaseInput {
   date: string;           // data ISO (YYYY-MM-DD)
   concepte: string;       // descripció del moviment
@@ -209,6 +215,8 @@ export interface PurchaseInput {
   attachmentUrl?: string | null;       // URL signada temporal (només lectura)
   attachmentBase64?: string | null;    // base64 per pujar (transitori, no es desa)
   attachmentMediaType?: string | null; // MIME type del fitxer adjunt
+  // Múltiples línies d'IVA (substitueix els camps subtotal/ivaRate/iva per a compres noves)
+  ivaLines?: IvaLine[] | null;
   // Altres
   notes?: string | null;
 }

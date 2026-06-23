@@ -27,13 +27,14 @@ export async function PATCH(
   if (!user) return unauthorized();
 
   const body = await req.json();
-  const { subtotal, ivaRate, iva, concepte, categoria, notes, attachmentBase64, attachmentMediaType, removeAttachment, currentAttachmentPath } = body;
+  const { subtotal, ivaRate, iva, ivaLines, concepte, categoria, notes, attachmentBase64, attachmentMediaType, removeAttachment, currentAttachmentPath } = body;
 
   const fields: Record<string, unknown> = {};
 
   if (subtotal !== undefined) fields.subtotal = subtotal;
   if (ivaRate !== undefined) fields.ivaRate = ivaRate;
   if (iva !== undefined) fields.iva = iva;
+  if (ivaLines !== undefined) fields.ivaLines = ivaLines;
   if (concepte !== undefined) fields.concepte = concepte;
   if (categoria !== undefined) fields.categoria = categoria;
   if (notes !== undefined) fields.notes = notes;

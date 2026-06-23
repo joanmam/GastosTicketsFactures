@@ -1,5 +1,5 @@
 import { getAdminDb } from "@/lib/firebase-admin";
-import type { Purchase, PurchaseInput } from "@/types";
+import type { Purchase, PurchaseInput, IvaLine } from "@/types";
 
 function docToPurchase(id: string, data: FirebaseFirestore.DocumentData): Purchase {
   return {
@@ -20,6 +20,7 @@ function docToPurchase(id: string, data: FirebaseFirestore.DocumentData): Purcha
     iva: data.iva ?? null,
     attachmentPath: data.attachmentPath ?? null,
     attachmentUrl: null, // es genera a l'API amb URL signada
+    ivaLines: data.ivaLines ?? null,
     notes: data.notes ?? null,
   };
 }
@@ -100,7 +101,7 @@ export async function createPurchases(
 export async function updatePurchase(
   userId: string,
   id: string,
-  fields: Partial<Pick<PurchaseInput, "subtotal" | "ivaRate" | "iva" | "attachmentPath" | "notes" | "concepte" | "categoria">>
+  fields: Partial<Pick<PurchaseInput, "subtotal" | "ivaRate" | "iva" | "ivaLines" | "attachmentPath" | "notes" | "concepte" | "categoria">>
 ): Promise<void> {
   const db = getAdminDb();
   await db

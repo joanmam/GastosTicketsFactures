@@ -66,18 +66,31 @@ function NewTicketContent() {
     setSaving(true);
     setError(null);
     try {
-      const payload: TicketInput = {
-        ...data,
-        imageBase64: imageBase64 || undefined,
-        imageMediaType: imageMediaType || undefined,
-      };
-      const res = await apiJson<{ ticket: { id: string } }>("/api/tickets", {
+      const total = data.totalAmount ?? 0;
+      const taxAmt = data.taxAmount ?? null;
+      const subtotal = taxAmt != null ? total - taxAmt : null;
+      const notesText = ["Escanejat", data.notes].filter(Boolean).join(" · ");
+
+      await apiJson("/api/purchases", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          date: data.date,
+          concepte: data.merchant || "",
+          categoria: data.category || "Altres",
+          import: total > 0 ? -total : total,
+          subtotal,
+          ivaRate: data.taxRate ?? null,
+          iva: taxAmt,
+          notes: notesText,
+          sourceFile: "Escaner",
+          sourceKey: `scan-${Date.now()}-${(data.merchant || "").slice(0, 20)}`,
+          attachmentBase64: imageBase64 || null,
+          attachmentMediaType: imageMediaType || null,
+        }),
       });
-      router.push(`/compres`);
+      router.push("/compres");
     } catch (err: any) {
-      setError(err?.message || "Error desant el ticket.");
+      setError(err?.message || "Error desant la compra.");
     } finally {
       setSaving(false);
     }
@@ -87,7 +100,7 @@ function NewTicketContent() {
     <>
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        <h1 className="text-xl font-semibold text-gray-900">Nou ticket</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Escanejar compra</h1>
 
         <div className="card space-y-3">
           <CameraCapture imagePreviewUrl={previewUrl} onImageSelected={handleImageSelected} />
@@ -101,7 +114,7 @@ function NewTicketContent() {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="card">
-          <TicketForm initialData={formData} onSubmit={handleSubmit} saving={saving} submitLabel="Crear ticket" />
+          <TicketForm initialData={formData} onSubmit={handleSubmit} saving={saving} submitLabel="💾 Desar compra" />
         </div>
       </main>
     </>

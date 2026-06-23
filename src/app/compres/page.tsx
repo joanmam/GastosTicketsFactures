@@ -493,9 +493,6 @@ export default function CompresPage() {
     </AuthGuard>
   );
 }
-    </>
-  );
-}
 
 export default function CompresPage() {
   return (

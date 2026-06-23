@@ -40,9 +40,11 @@ function initIvaLines(p: Purchase): IvaLine[] {
 function IvaLinesEditor({
   lines,
   onChange,
+  total,
 }: {
   lines: IvaLine[];
   onChange: (lines: IvaLine[]) => void;
+  total: number;
 }) {
   function updateLine(i: number, field: keyof IvaLine, raw: string) {
     const val = raw === "" ? 0 : parseFloat(raw);
@@ -59,7 +61,13 @@ function IvaLinesEditor({
   }
 
   function addLine() {
-    onChange([...lines, emptyIvaLine()]);
+    const defaultRate = 21;
+    // Calcula el romanent que queda per cobrir
+    const covered = lines.reduce((s, l) => s + l.subtotal + l.iva, 0);
+    const remaining = Math.max(0, parseFloat((total - covered).toFixed(2)));
+    const subtotal = parseFloat((remaining / (1 + defaultRate / 100)).toFixed(2));
+    const iva = parseFloat((subtotal * defaultRate / 100).toFixed(2));
+    onChange([...lines, { ivaRate: defaultRate, subtotal, iva }]);
   }
 
   function removeLine(i: number) {
@@ -391,7 +399,7 @@ function PurchaseDetailContent() {
                 </span>
               </div>
 
-              <IvaLinesEditor lines={ivaLines} onChange={setIvaLines} />
+              <IvaLinesEditor lines={ivaLines} onChange={setIvaLines} total={total} />
 
               {ivaLines.length > 0 && (() => {
                 const sumTotal = ivaLines.reduce((s, l) => s + l.subtotal + l.iva, 0);

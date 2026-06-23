@@ -200,6 +200,15 @@ export interface PurchaseInput {
   sourceFile: string;     // nom del fitxer XML origen
   sourceKey: string;      // clau única per evitar duplicats
   importSource?: string | null; // p.ex. "Holded" quan ve d'importació
+  // Desglosament IVA (opcional, editable manualment)
+  subtotal?: number | null;    // base imposable (sense IVA)
+  ivaRate?: number | null;     // tipus IVA aplicat (0, 4, 10, 21)
+  iva?: number | null;         // import IVA
+  // Adjunt (ticket, factura, etc.)
+  attachmentPath?: string | null;      // ruta a Firebase Storage
+  attachmentUrl?: string | null;       // URL signada temporal (només lectura)
+  attachmentBase64?: string | null;    // base64 per pujar (transitori, no es desa)
+  attachmentMediaType?: string | null; // MIME type del fitxer adjunt
 }
 
 export interface Purchase extends PurchaseInput {

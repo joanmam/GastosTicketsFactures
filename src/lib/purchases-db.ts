@@ -15,6 +15,11 @@ function docToPurchase(id: string, data: FirebaseFirestore.DocumentData): Purcha
     sourceKey: data.sourceKey ?? "",
     importSource: data.importSource ?? null,
     createdAt: data.createdAt ?? null,
+    subtotal: data.subtotal ?? null,
+    ivaRate: data.ivaRate ?? null,
+    iva: data.iva ?? null,
+    attachmentPath: data.attachmentPath ?? null,
+    attachmentUrl: null, // es genera a l'API amb URL signada
   };
 }
 
@@ -77,6 +82,20 @@ export async function createPurchases(
 
   await batch.commit();
   return inputs.length;
+}
+
+export async function updatePurchase(
+  userId: string,
+  id: string,
+  fields: Partial<Pick<PurchaseInput, "subtotal" | "ivaRate" | "iva" | "attachmentPath">>
+): Promise<void> {
+  const db = getAdminDb();
+  await db
+    .collection("users")
+    .doc(userId)
+    .collection("purchases")
+    .doc(id)
+    .update({ ...fields, updatedAt: new Date().toISOString() });
 }
 
 export async function deletePurchase(userId: string, id: string): Promise<void> {

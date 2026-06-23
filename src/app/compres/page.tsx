@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
@@ -11,6 +11,186 @@ function formatAmount(n: number) {
   return new Intl.NumberFormat("ca-ES", { style: "currency", currency: "EUR" }).format(n);
 }
 
+const IVA_RATES = [null, 0, 4, 10, 21];
+
+// ── Editor inline d'IVA ──────────────────────────────────────────────────────
+function IvaEditor({
+  purchase,
+  onSaved,
+}: {
+  purchase: Purchase;
+  onSaved: (updated: Partial<Purchase>) => void;
+}) {
+  const total = Math.abs(purchase.import);
+  const [rate, setRate] = useState<number | null>(purchase.ivaRate ?? null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleChange(newRate: number | null) {
+    setRate(newRate);
+    setSaving(true);
+    let subtotal: number | null = null;
+    let iva: number | null = null;
+    if (newRate !== null) {
+      subtotal = total / (1 + newRate / 100);
+      iva = total - subtotal;
+    }
+    try {
+      await apiJson(`/api/purchases/${purchase.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ivaRate: newRate, subtotal, iva }),
+      });
+      onSaved({ ivaRate: newRate, subtotal, iva });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <select
+      value={rate ?? ""}
+      onChange={(e) => {
+        const v = e.target.value;
+        handleChange(v === "" ? null : Number(v));
+      }}
+      disabled={saving}
+      className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+      title="Selecciona el tipus d'IVA"
+    >
+      <option value="">—</option>
+      {[0, 4, 10, 21].map((r) => (
+        <option key={r} value={r}>
+          {r}%
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// ── Columna adjunt ───────────────────────────────────────────────────────────
+function AttachmentCell({
+  purchase,
+  onSaved,
+}: {
+  purchase: Purchase;
+  onSaved: (updated: Partial<Purchase>) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await apiJson<{ ok: boolean }>(`/api/purchases/${purchase.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          attachmentBase64: base64,
+          attachmentMediaType: file.type,
+          currentAttachmentPath: purchase.attachmentPath ?? null,
+        }),
+      });
+      if (res.ok) {
+        // Recarregar URL signada recarregant la pàgina no és necessari;
+        // indiquem que hi ha adjunt perquè el pare actualitzi l'estat
+        onSaved({ attachmentPath: "__pending__", attachmentUrl: null });
+      }
+    } catch {
+      setError("Error pujant el fitxer");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemove() {
+    if (!confirm("Eliminar l'adjunt?")) return;
+    setUploading(true);
+    try {
+      await apiJson(`/api/purchases/${purchase.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          removeAttachment: true,
+          currentAttachmentPath: purchase.attachmentPath,
+        }),
+      });
+      onSaved({ attachmentPath: null, attachmentUrl: null });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (uploading) {
+    return <span className="text-xs text-gray-400">Pujant…</span>;
+  }
+
+  if (purchase.attachmentUrl) {
+    return (
+      <div className="flex items-center gap-1">
+        <a
+          href={purchase.attachmentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 text-base"
+          title="Veure adjunt"
+        >
+          📎
+        </a>
+        <button
+          onClick={handleRemove}
+          className="text-[10px] text-gray-300 hover:text-red-500"
+          title="Eliminar adjunt"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  if (purchase.attachmentPath && purchase.attachmentPath !== "__pending__") {
+    // Té path però URL no disponible (expirada, recarrega)
+    return (
+      <span className="text-xs text-gray-400" title="Adjunt desat (recarrega per veure)">
+        📎
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => inputRef.current?.click()}
+        className="text-gray-300 hover:text-blue-500 text-base"
+        title="Pujar PDF o imatge"
+      >
+        ⬆
+      </button>
+      {error && <span className="text-[10px] text-red-500">{error}</span>}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/jpeg,image/png,image/jpg"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Pàgina principal ─────────────────────────────────────────────────────────
 function CompresContent() {
   const searchParams = useSearchParams();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -72,6 +252,12 @@ function CompresContent() {
     }
   }
 
+  function updatePurchaseLocal(id: string, fields: Partial<Purchase>) {
+    setPurchases((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...fields } : p))
+    );
+  }
+
   // Categories úniques per al filtre
   const categories = Array.from(new Set(purchases.map((p) => p.categoria))).sort();
 
@@ -84,10 +270,18 @@ function CompresContent() {
     .reduce((s, p) => s + p.import, 0);
   const netDespeses = totalDespeses - totalAbonaments;
 
+  const totalSubtotal = purchases
+    .filter((p) => p.import < 0 && p.subtotal != null)
+    .reduce((s, p) => s + Math.abs(p.subtotal!), 0);
+  const totalIva = purchases
+    .filter((p) => p.import < 0 && p.iva != null)
+    .reduce((s, p) => s + Math.abs(p.iva!), 0);
+  const ivaDesglossat = purchases.filter((p) => p.subtotal != null).length;
+
   return (
     <>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-xl font-semibold text-gray-900">Compres amb targeta</h1>
           <button
@@ -145,7 +339,7 @@ function CompresContent() {
 
         {/* Resum */}
         {!loading && purchases.length > 0 && (
-          <div className="card grid grid-cols-3 gap-4 text-sm">
+          <div className="card grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-gray-500">Total despeses</p>
               <p className="font-semibold text-red-600">−{formatAmount(totalDespeses)}</p>
@@ -154,6 +348,18 @@ function CompresContent() {
               <p className="text-gray-500">Abonaments</p>
               <p className="font-semibold text-green-700">+{formatAmount(totalAbonaments)}</p>
             </div>
+            {ivaDesglossat > 0 && (
+              <>
+                <div>
+                  <p className="text-gray-500">Base imposable ({ivaDesglossat} mov.)</p>
+                  <p className="font-semibold text-gray-800">−{formatAmount(totalSubtotal)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">IVA suportat</p>
+                  <p className="font-semibold text-orange-600">−{formatAmount(totalIva)}</p>
+                </div>
+              </>
+            )}
             <div>
               <p className="text-gray-500">Net</p>
               <p className={`font-semibold ${netDespeses <= 0 ? "text-green-700" : "text-red-600"}`}>
@@ -177,55 +383,93 @@ function CompresContent() {
                   <th className="px-4 py-2 font-medium">Data</th>
                   <th className="px-4 py-2 font-medium">Concepte</th>
                   <th className="px-4 py-2 font-medium">Categoria</th>
-                  <th className="px-4 py-2 font-medium text-right">Import</th>
-                  <th className="px-4 py-2 font-medium">Compte/Targeta</th>
-                  <th className="px-4 py-2 font-medium">Fitxer</th>
+                  <th className="px-4 py-2 font-medium text-right">Subtotal</th>
+                  <th className="px-4 py-2 font-medium text-center">IVA%</th>
+                  <th className="px-4 py-2 font-medium text-right">IVA€</th>
+                  <th className="px-4 py-2 font-medium text-right">Total</th>
+                  <th className="px-4 py-2 font-medium">Compte</th>
+                  <th className="px-4 py-2 font-medium text-center">Adjunt</th>
                   <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {purchases.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 whitespace-nowrap">{p.date}</td>
-                    <td className="px-4 py-2">{p.concepte}</td>
-                    <td className="px-4 py-2">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">
-                        {p.categoria}
-                      </span>
-                      {(p as any).importSource === "Holded" && (
-                        <span className="ml-1 inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-700">
-                          Holded
+                {purchases.map((p) => {
+                  const total = Math.abs(p.import);
+                  const isExpense = p.import < 0;
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 whitespace-nowrap">{p.date}</td>
+                      <td className="px-4 py-2">{p.concepte}</td>
+                      <td className="px-4 py-2">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">
+                          {p.categoria}
                         </span>
-                      )}
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-right font-medium whitespace-nowrap ${
-                        p.import < 0 ? "text-red-600" : "text-green-700"
-                      }`}
-                    >
-                      {p.import < 0 ? "−" : "+"}
-                      {formatAmount(Math.abs(p.import))}
-                    </td>
-                    <td className="px-4 py-2 text-gray-600">{p.compteTarjeta}</td>
-                    <td className="px-4 py-2 text-xs text-gray-400 truncate max-w-[160px]">
-                      {p.sourceFile}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="text-xs text-gray-400 hover:text-red-600"
-                        title="Eliminar"
+                        {(p as any).importSource === "Holded" && (
+                          <span className="ml-1 inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-700">
+                            Holded
+                          </span>
+                        )}
+                      </td>
+                      {/* Subtotal */}
+                      <td className="px-4 py-2 text-right text-gray-700 whitespace-nowrap">
+                        {p.subtotal != null
+                          ? <span>{isExpense ? "−" : "+"}{formatAmount(Math.abs(p.subtotal))}</span>
+                          : <span className="text-gray-300">—</span>}
+                      </td>
+                      {/* IVA% selector */}
+                      <td className="px-4 py-2 text-center">
+                        <IvaEditor
+                          purchase={p}
+                          onSaved={(fields) => updatePurchaseLocal(p.id, fields)}
+                        />
+                      </td>
+                      {/* IVA€ */}
+                      <td className="px-4 py-2 text-right text-orange-600 whitespace-nowrap">
+                        {p.iva != null
+                          ? <span>{isExpense ? "−" : "+"}{formatAmount(Math.abs(p.iva))}</span>
+                          : <span className="text-gray-300">—</span>}
+                      </td>
+                      {/* Total */}
+                      <td
+                        className={`px-4 py-2 text-right font-medium whitespace-nowrap ${
+                          isExpense ? "text-red-600" : "text-green-700"
+                        }`}
                       >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {isExpense ? "−" : "+"}
+                        {formatAmount(total)}
+                      </td>
+                      <td className="px-4 py-2 text-gray-600 text-xs">{p.compteTarjeta}</td>
+                      {/* Adjunt */}
+                      <td className="px-4 py-2 text-center">
+                        <AttachmentCell
+                          purchase={p}
+                          onSaved={(fields) => updatePurchaseLocal(p.id, fields)}
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="text-xs text-gray-400 hover:text-red-600"
+                          title="Eliminar"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
-                <tr className="border-t border-gray-200 font-medium">
+                <tr className="border-t border-gray-200 font-medium bg-gray-50">
                   <td className="px-4 py-2" colSpan={3}>
                     Total ({purchases.length} moviments)
+                  </td>
+                  <td className="px-4 py-2 text-right text-gray-700">
+                    {ivaDesglossat > 0 ? `−${formatAmount(totalSubtotal)}` : ""}
+                  </td>
+                  <td />
+                  <td className="px-4 py-2 text-right text-orange-600">
+                    {ivaDesglossat > 0 ? `−${formatAmount(totalIva)}` : ""}
                   </td>
                   <td className="px-4 py-2 text-right text-red-600">
                     −{formatAmount(netDespeses)}

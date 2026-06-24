@@ -87,7 +87,20 @@ function InvoicesPageContent() {
   }
 
   const pendingAeatCount = invoices.filter((i) => i.aeat?.status === "PENDING").length;
-  const totalGeneral = invoices.reduce((sum, i) => sum + computeInvoiceTotals(i.items || [], i.irpfRate).total, 0);
+
+  const periodTotals = invoices.reduce(
+    (acc, i) => {
+      const t = computeInvoiceTotals(i.items || [], i.irpfRate);
+      return {
+        baseImposable: acc.baseImposable + t.baseImposable,
+        vatTotal: acc.vatTotal + t.vatTotal,
+        irpfAmount: acc.irpfAmount + t.irpfAmount,
+        total: acc.total + t.total,
+      };
+    },
+    { baseImposable: 0, vatTotal: 0, irpfAmount: 0, total: 0 }
+  );
+  const totalGeneral = periodTotals.total;
 
   return (
     <>
@@ -152,6 +165,27 @@ function InvoicesPageContent() {
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {!loading && invoices.length > 0 && (
+          <div className="card grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500">Base imposable</p>
+              <p className="font-semibold text-gray-900">{formatAmount(periodTotals.baseImposable)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">IVA repercutit</p>
+              <p className="font-semibold text-green-700">+{formatAmount(periodTotals.vatTotal)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">IRPF retingut</p>
+              <p className="font-semibold text-red-600">−{formatAmount(periodTotals.irpfAmount)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Total ({invoices.length} fact.)</p>
+              <p className="font-semibold text-gray-900">{formatAmount(periodTotals.total)}</p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <p className="text-sm text-gray-500">Carregant...</p>

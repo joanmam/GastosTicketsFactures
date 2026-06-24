@@ -360,7 +360,7 @@ function CompresContent() {
 
         {/* Resum */}
         {!loading && purchases.length > 0 && (
-          <div className="card grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div className="card flex flex-wrap gap-6 text-sm">
             <div>
               <p className="text-gray-500">Total despeses</p>
               <p className="font-semibold text-red-600">−{formatAmount(totalDespeses)}</p>

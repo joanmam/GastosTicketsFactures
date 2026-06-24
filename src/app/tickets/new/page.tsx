@@ -23,6 +23,25 @@ const EMPTY: TicketInput = {
   items: [],
 };
 
+/** Normalitza qualsevol format de data a YYYY-MM-DD.
+ * Suporta: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, YYYY/MM/DD, etc. */
+function normalizeDate(raw: string | null | undefined): string {
+  if (!raw) return new Date().toISOString().slice(0, 10);
+  const s = raw.trim();
+  // Ja és YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // DD/MM/YYYY o DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
+  // YYYY/MM/DD
+  const ymdSlash = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (ymdSlash) return `${ymdSlash[1]}-${ymdSlash[2]}-${ymdSlash[3]}`;
+  // Fallback: intentar parsejar
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
+}
+
 function NewTicketContent() {
   const router = useRouter();
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -51,7 +70,7 @@ function NewTicketContent() {
       setFormData((f) => ({
         ...f,
         ...data.data,
-        date: data.data?.date || f.date,
+        date: normalizeDate(data.data?.date) || f.date,
         currency: data.data?.currency || f.currency,
         status: "REVIEW",
       }));
@@ -74,7 +93,7 @@ function NewTicketContent() {
       await apiJson("/api/purchases", {
         method: "POST",
         body: JSON.stringify({
-          date: data.date,
+          date: normalizeDate(data.date),
           concepte: data.merchant || "",
           categoria: data.category || "Altres",
           import: total > 0 ? -total : total,

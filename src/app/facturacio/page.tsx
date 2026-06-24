@@ -21,6 +21,9 @@ interface QuarterSummary {
   purchaseExpenses: number;
   expenses: number;
   balance: number;
+  ivaSuportat: number;
+  ivaRepercutit: number;
+  ivaBalance: number;
 }
 
 function quarterDateRange(year: number, q: number) {
@@ -40,6 +43,9 @@ interface Totals {
   total: number;
   expenses: number;
   balance: number;
+  ivaSuportat: number;
+  ivaRepercutit: number;
+  ivaBalance: number;
 }
 
 interface PendingPaymentItem {
@@ -173,6 +179,23 @@ function DashboardContent() {
                     </div>
                   </div>
 
+                  {/* Model 303 — IVA */}
+                  <div className="text-sm pt-2 space-y-0.5 border-t border-gray-100">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Model 303 (IVA)</p>
+                    <div className="flex justify-between text-gray-600">
+                      <span>IVA repercutit</span>
+                      <span className="text-green-700">+{formatAmount(q.ivaRepercutit)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>IVA suportat</span>
+                      <span className="text-orange-600">−{formatAmount(q.ivaSuportat)}</span>
+                    </div>
+                    <div className={`flex justify-between font-semibold pt-0.5 border-t border-gray-100 ${q.ivaBalance >= 0 ? "text-red-600" : "text-green-700"}`}>
+                      <span>{q.ivaBalance >= 0 ? "A pagar" : "A retornar"}</span>
+                      <span>{formatAmount(Math.abs(q.ivaBalance))}</span>
+                    </div>
+                  </div>
+
                   <p className="text-xs text-gray-400">{q.invoiceCount} factura{q.invoiceCount !== 1 ? "s" : ""}</p>
                 </div>
               ))}
@@ -206,6 +229,25 @@ function DashboardContent() {
                   <p className={`font-semibold ${data.totals.balance >= 0 ? "text-green-700" : "text-red-600"}`}>
                     {formatAmount(data.totals.balance)}
                   </p>
+                </div>
+              </div>
+              <div className="border-t border-gray-100 pt-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Model 303 (IVA anual)</p>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-gray-500">IVA repercutit</p>
+                    <p className="font-semibold text-green-700">+{formatAmount(data.totals.ivaRepercutit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">IVA suportat</p>
+                    <p className="font-semibold text-orange-600">−{formatAmount(data.totals.ivaSuportat)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">{data.totals.ivaBalance >= 0 ? "Total a pagar" : "Total a retornar"}</p>
+                    <p className={`font-semibold ${data.totals.ivaBalance >= 0 ? "text-red-600" : "text-green-700"}`}>
+                      {formatAmount(Math.abs(data.totals.ivaBalance))}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

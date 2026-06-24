@@ -58,6 +58,21 @@ export async function GET(req: NextRequest) {
     const netPurchaseExpenses = purchaseExpenses - purchaseRefunds;
     const expenses = ticketExpenses + netPurchaseExpenses;
 
+    // IVA suportat (pagat): suma de l'IVA de les compres del trimestre
+    const ivaSuportat = qPurchases
+      .filter((p) => p.import < 0)
+      .reduce((sum, p) => {
+        if (p.ivaLines && p.ivaLines.length > 0) {
+          return sum + p.ivaLines.reduce((s: number, l: any) => s + (l.iva || 0), 0);
+        }
+        return sum + Math.abs(p.iva || 0);
+      }, 0);
+
+    // IVA repercutit (cobrat en factures) = vatTotal ja calculat
+    const ivaRepercutit = vatTotal;
+    // Diferència positiva = a pagar a l'AEAT; negativa = a retornar
+    const ivaBalance = round2(ivaRepercutit - ivaSuportat);
+
     return {
       quarter: q,
       invoiceCount: qInvoices.length,
@@ -70,6 +85,9 @@ export async function GET(req: NextRequest) {
       purchaseExpenses: round2(netPurchaseExpenses),
       expenses: round2(expenses),
       balance: round2(baseImposable - expenses),
+      ivaSuportat: round2(ivaSuportat),
+      ivaRepercutit: round2(ivaRepercutit),
+      ivaBalance,
     };
   });
 
@@ -105,8 +123,11 @@ export async function GET(req: NextRequest) {
       total: round2(acc.total + q.total),
       expenses: round2(acc.expenses + q.expenses),
       balance: round2(acc.balance + q.balance),
+      ivaSuportat: round2(acc.ivaSuportat + q.ivaSuportat),
+      ivaRepercutit: round2(acc.ivaRepercutit + q.ivaRepercutit),
+      ivaBalance: round2(acc.ivaBalance + q.ivaBalance),
     }),
-    { baseImposable: 0, vatTotal: 0, irpfAmount: 0, total: 0, expenses: 0, balance: 0 }
+    { baseImposable: 0, vatTotal: 0, irpfAmount: 0, total: 0, expenses: 0, balance: 0, ivaSuportat: 0, ivaRepercutit: 0, ivaBalance: 0 }
   );
 
   return NextResponse.json({

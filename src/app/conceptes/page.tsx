@@ -128,6 +128,7 @@ function ConceptesPageContent() {
                   <th className="px-4 py-2 font-medium">% IVA</th>
                   <th className="px-4 py-2 font-medium">Usos</th>
                   <th className="px-4 py-2 font-medium">Últim ús</th>
+                  <th className="px-4 py-2 font-medium">Factures</th>
                   <th className="px-4 py-2 font-medium"></th>
                 </tr>
               </thead>
@@ -185,6 +186,24 @@ function ConceptesPageContent() {
                       </td>
                       <td className="px-4 py-2">{item.usageCount}</td>
                       <td className="px-4 py-2">{item.lastUsedDate || "—"}</td>
+                      <td className="px-4 py-2">
+                        {item.invoices && item.invoices.length > 0 ? (
+                          <div className="flex flex-wrap gap-x-2 gap-y-1">
+                            {item.invoices.map((inv) => (
+                              <a
+                                key={inv.id}
+                                href={`/invoices/${inv.id}`}
+                                className="text-blue-600 hover:underline whitespace-nowrap"
+                                title={inv.date || ""}
+                              >
+                                {inv.number || inv.date || inv.id.slice(0, 6)}
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="px-4 py-2 whitespace-nowrap">
                         {isEditing ? (
                           <div className="flex gap-2">

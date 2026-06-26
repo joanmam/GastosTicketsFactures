@@ -146,11 +146,19 @@ export interface LineItemCatalogInput {
   vatRate?: number | null;
 }
 
+/** Referència a una factura que ha fet servir un concepte del catàleg. */
+export interface CatalogInvoiceRef {
+  id: string;
+  number?: string | null;
+  date?: string | null; // ISO date YYYY-MM-DD
+}
+
 export interface LineItemCatalogEntry extends LineItemCatalogInput {
   id: string;
   userId: string;
   usageCount: number;
   lastUsedDate?: string | null;
+  invoices?: CatalogInvoiceRef[]; // factures que han usat aquest concepte
   createdAt?: string | null;
   updatedAt?: string | null;
 }
